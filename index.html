@@ -18,13 +18,15 @@
   <style>
     :root {
       --bg-dark: #121212;
-      --bg-panel: #181818;
-      --bg-button: #1d1d1d;
-      --border-color: #2e2e2e;
-      --text-main: #e8e8e8;
-      --text-muted: #8c8c8c;
+      --bg-panel: #1a1a1a;
+      --bg-button: #202020;
+      --bg-button-active: #323232;
+      --border-color: #353535;
+      --border-bright: #777777;
+      --text-main: #f5f5f5;
+      --text-muted: #aaaaaa;
       --accent: #ffffff;
-      --font-mono: 'SF Mono', 'JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', 'Hiragino Kaku Gothic ProN', 'Meiryo', monospace;
     }
 
     * {
@@ -40,6 +42,7 @@
       background-color: var(--bg-dark);
       color: var(--text-main);
       font-family: var(--font-mono);
+      font-weight: 600;
       height: 100dvh;
       width: 100vw;
       overflow: hidden;
@@ -47,9 +50,34 @@
       flex-direction: column;
     }
 
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      top: 66px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: rgba(28, 28, 28, 0.96);
+      color: #fff;
+      border: 1px solid #666;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+      z-index: 200;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     /* Top Bar */
     .top-bar {
-      height: 54px;
+      height: 56px;
       padding: 0 12px;
       display: flex;
       align-items: center;
@@ -57,7 +85,7 @@
       background: var(--bg-dark);
       border-bottom: 1px solid var(--border-color);
       flex-shrink: 0;
-      z-index: 20;
+      z-index: 30;
     }
 
     .top-group {
@@ -70,33 +98,42 @@
       background: var(--bg-button);
       color: var(--text-main);
       border: 1px solid var(--border-color);
-      padding: 8px 13px;
+      padding: 9px 14px;
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 700;
       letter-spacing: 0.08em;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      border-radius: 2px;
-      transition: background 0.15s, border-color 0.15s;
+      border-radius: 3px;
+      transition: background 0.12s, border-color 0.12s, transform 0.08s;
     }
 
     .btn:hover {
-      background: #252525;
-      border-color: #444;
+      background: #2a2a2a;
+      border-color: #555;
     }
 
-    .btn:active {
-      transform: translateY(1px);
+    .btn:active, .btn.flash {
+      background: #3d3d3d;
+      border-color: #fff;
+      transform: scale(0.97);
+    }
+
+    .btn.active-toggle {
+      background: var(--bg-button-active);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset;
     }
 
     .btn-icon {
-      padding: 8px 10px;
+      padding: 9px 11px;
     }
 
-    /* Main Workspace (Responsive 2-column for Z Fold / Tablet / Desktop) */
+    /* Main Workspace: Default Portrait is ALWAYS Top-to-Bottom */
     .workspace {
       flex: 1;
       display: flex;
@@ -107,21 +144,21 @@
 
     .canvas-stage {
       flex: 1;
-      background: #0d0d0d;
+      min-height: 0;
+      background: #0b0b0b;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       position: relative;
-      padding: 12px;
+      padding: 14px;
     }
 
     #mainCanvas {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
-      transition: opacity 0.15s;
+      box-shadow: 0 12px 38px rgba(0, 0, 0, 0.75);
     }
 
     /* Controls Deck */
@@ -131,14 +168,145 @@
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      z-index: 15;
+      position: relative;
+      z-index: 25;
+    }
+
+    /* Popup Modal Sheet (Appears above controls when any button is tapped) */
+    .popup-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 40;
+      display: none;
+    }
+    .popup-backdrop.open {
+      display: block;
+    }
+
+    .popup-sheet {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 205px;
+      background: #1b1b1b;
+      border: 1px solid #4a4a4a;
+      border-radius: 6px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: popUp 0.16s ease-out;
+    }
+
+    @keyframes popUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .popup-sheet.open {
+      display: flex;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      background: #141414;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .popup-close {
+      background: transparent;
+      border: 1px solid #444;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .popup-body {
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 45dvh;
+      overflow-y: auto;
+    }
+
+    /* Option Grid inside Popup */
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .option-chip {
+      background: #242424;
+      border: 1px solid #3c3c3c;
+      color: var(--text-main);
+      padding: 12px 10px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.12s;
+    }
+
+    .option-chip.active {
+      background: #333333;
+      border: 2px solid #ffffff;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .slider-row label {
+      width: 130px;
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      accent-color: #ffffff;
+      cursor: pointer;
+    }
+
+    .slider-val {
+      width: 44px;
+      text-align: right;
+      font-weight: 700;
+      color: #ffffff;
     }
 
     /* Ink Layer Tabs */
     .ink-tabs-bar {
       display: flex;
       align-items: center;
-      background: #0f0f0f;
+      background: #101010;
       border-bottom: 1px solid var(--border-color);
       overflow-x: auto;
       scrollbar-width: none;
@@ -149,11 +317,12 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 14px;
-      font-size: 12px;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 700;
       letter-spacing: 0.06em;
       color: var(--text-muted);
-      background: #141414;
+      background: #151515;
       border-right: 1px solid var(--border-color);
       cursor: pointer;
       white-space: nowrap;
@@ -161,39 +330,40 @@
 
     .ink-tab.active {
       background: var(--bg-panel);
-      color: var(--text-main);
-      font-weight: 600;
+      color: #ffffff;
+      border-bottom: 2px solid #ffffff;
     }
 
     .ink-dot {
-      width: 11px;
-      height: 11px;
-      border: 1px solid rgba(255,255,255,0.35);
+      width: 12px;
+      height: 12px;
+      border: 1px solid rgba(255,255,255,0.45);
       display: inline-block;
     }
 
     .tab-close {
-      margin-left: 4px;
-      opacity: 0.6;
-      font-size: 13px;
-      padding: 0 2px;
+      margin-left: 6px;
+      opacity: 0.7;
+      font-size: 15px;
+      padding: 0 3px;
     }
     .tab-close:hover { opacity: 1; }
 
     .ink-tab-add {
-      padding: 10px 16px;
-      color: var(--text-muted);
+      padding: 11px 18px;
+      color: var(--text-main);
       cursor: pointer;
-      font-size: 15px;
+      font-size: 16px;
+      font-weight: 700;
       border-right: 1px solid var(--border-color);
     }
-    .ink-tab-add:hover { color: var(--text-main); background: #1e1e1e; }
+    .ink-tab-add:hover { background: #242424; }
 
     /* Swatch Bar */
     .swatch-bar {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       padding: 12px;
       overflow-x: auto;
       border-bottom: 1px solid var(--border-color);
@@ -203,32 +373,39 @@
     .swatch-bar::-webkit-scrollbar { display: none; }
 
     .swatch-auto {
-      width: 32px;
-      height: 32px;
-      border: 1px dashed #666;
+      width: 34px;
+      height: 34px;
+      border: 2px dashed #888;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 700;
       color: var(--text-main);
       flex-shrink: 0;
       cursor: pointer;
+      border-radius: 2px;
+    }
+    .swatch-auto:active {
+      background: #333;
+      border-color: #fff;
     }
 
     .swatch-item {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       flex-shrink: 0;
       cursor: pointer;
-      border: 2px solid transparent;
+      border: 2px solid rgba(255,255,255,0.15);
       position: relative;
+      border-radius: 2px;
       transition: transform 0.1s;
     }
 
     .swatch-item.active {
-      border-color: #ffffff;
-      box-shadow: 0 0 0 1px #000 inset;
-      transform: scale(1.06);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #000 inset;
+      transform: scale(1.08);
     }
 
     .swatch-item.hatched::after {
@@ -237,8 +414,8 @@
       inset: 0;
       background: repeating-linear-gradient(
         -45deg,
-         rgba(255,255,255,0.28),
-        rgba(255,255,255,0.28) 2px,
+        rgba(255,255,255,0.32),
+        rgba(255,255,255,0.32) 2px,
         transparent 2px,
         transparent 5px
       );
@@ -256,50 +433,10 @@
 
     .matrix-btn {
       height: 52px;
-      font-size: 12px;
-      background: #171717;
-      border: 1px solid #2b2b2b;
-    }
-
-    /* Sub Controls Drawer (Sliders for Grain / Paper / Tone / Frame) */
-    .drawer-panel {
-      background: #151515;
-      border-bottom: 1px solid var(--border-color);
-      padding: 12px 14px;
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .drawer-panel.open {
-      display: flex;
-    }
-
-    .slider-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .slider-row label {
-      width: 110px;
-      flex-shrink: 0;
-      letter-spacing: 0.05em;
-    }
-
-    .slider-row input[type="range"] {
-      flex: 1;
-      accent-color: #ffffff;
-      cursor: pointer;
-    }
-
-    .slider-val {
-      width: 38px;
-      text-align: right;
-      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 700;
+      background: #1b1b1b;
+      border: 1px solid #353535;
     }
 
     /* Bottom Bar (GRAIN / PAPER / TONE) */
@@ -307,7 +444,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 12px;
+      padding: 10px 12px 14px;
       background: var(--bg-dark);
     }
 
@@ -317,10 +454,10 @@
     }
 
     .paper-indicator {
-      width: 11px;
-      height: 11px;
+      width: 12px;
+      height: 12px;
       display: inline-block;
-      border: 1px solid rgba(255,255,255,0.3);
+      border: 1px solid rgba(255,255,255,0.45);
     }
 
     /* Preset Modal (Screenshot 1 Faithful Grid) */
@@ -353,8 +490,8 @@
         -45deg,
         #1b1b1b,
         #1b1b1b 4px,
-        #252525 4px,
-        #252525 8px
+        #282828 4px,
+        #282828 8px
       );
     }
 
@@ -371,7 +508,7 @@
     .preset-card {
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 8px;
       cursor: pointer;
     }
 
@@ -380,12 +517,12 @@
       aspect-ratio: 4 / 3;
       background: #222;
       overflow: hidden;
-      border: 1px solid #2e2e2e;
+      border: 1px solid #383838;
       position: relative;
     }
 
     .preset-card:hover .preset-thumb-wrap {
-      border-color: #777;
+      border-color: #999;
     }
 
     .preset-thumb-canvas {
@@ -396,13 +533,14 @@
     }
 
     .preset-title {
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 700;
       color: var(--text-main);
       letter-spacing: 0.03em;
     }
 
-    /* Foldable / Wide Layout (Galaxy Z Fold 8 & Desktop) */
-    @media (min-width: 760px) {
+    /* Landscape ONLY 2-Column Layout (Portrait on Z Fold 8 stays Top/Bottom) */
+    @media (orientation: landscape) and (min-width: 760px) {
       .workspace {
         flex-direction: row;
       }
@@ -411,16 +549,17 @@
         height: 100%;
       }
       .controls-deck {
-        width: 390px;
+        width: 400px;
         height: 100%;
         border-top: none;
         border-left: 1px solid var(--border-color);
         justify-content: flex-end;
       }
-      .drawer-panel {
-        flex: 1;
-        display: flex;
-        overflow-y: auto;
+      .popup-sheet {
+        left: auto;
+        right: 16px;
+        width: 368px;
+        bottom: 145px;
       }
       .preset-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -429,19 +568,12 @@
         width: 100%;
       }
     }
-
-    /* Icon Preview Box */
-    .icon-dl-box {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding-top: 6px;
-      border-top: 1px solid #2a2a2a;
-      margin-top: 4px;
-    }
   </style>
 </head>
 <body>
+
+  <!-- Action Feedback Toast -->
+  <div class="toast" id="toastMsg">APPLIED</div>
 
   <!-- Top Navigation Bar -->
   <header class="top-bar">
@@ -449,15 +581,15 @@
       <button class="btn" id="btnUpload">IMAGE &times;</button>
       <input type="file" id="fileInput" accept="image/*" hidden />
       <button class="btn" id="btnOpenPresets">PRESET</button>
-      <button class="btn btn-icon" id="btnQuickInvert" title="Invert Ink Order">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="btn btn-icon" id="btnQuickInvert" title="インク順序を反転">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
           <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
         </svg>
       </button>
     </div>
     <div class="top-group">
-      <button class="btn btn-icon" id="btnSettings" title="Settings & PWA Icons">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="btn btn-icon" id="btnSettings" title="設定・PWAアイコン">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
@@ -466,11 +598,23 @@
     </div>
   </header>
 
-  <!-- Workspace -->
+  <!-- Main Workspace -->
   <main class="workspace">
     <section class="canvas-stage">
       <canvas id="mainCanvas"></canvas>
     </section>
+
+    <!-- Backdrop for Popup Sheets -->
+    <div class="popup-backdrop" id="popupBackdrop"></div>
+
+    <!-- Dynamic Popup Sheet -->
+    <div class="popup-sheet" id="popupSheet">
+      <div class="popup-header">
+        <span id="popupTitle">ADJUST</span>
+        <button class="popup-close" id="btnClosePopup">CLOSE &times;</button>
+      </div>
+      <div class="popup-body" id="popupBody"></div>
+    </div>
 
     <aside class="controls-deck">
       <!-- Dynamic Ink Layer Tabs -->
@@ -478,42 +622,7 @@
 
       <!-- Ink Swatches -->
       <div class="swatch-bar" id="swatchBar">
-        <div class="swatch-auto" id="btnAutoBalance" title="Auto Tone Balance">A</div>
-      </div>
-
-      <!-- Parameter Drawer -->
-      <div class="drawer-panel" id="drawerPanel">
-        <div class="slider-row">
-          <label>DOT / GRAIN SIZE</label>
-          <input type="range" id="rngDotSize" min="2" max="16" step="0.5" value="5.5" />
-          <span class="slider-val" id="valDotSize">5.5</span>
-        </div>
-        <div class="slider-row">
-          <label>PAPER TEXTURE</label>
-          <input type="range" id="rngTexture" min="0" max="100" value="48" />
-          <span class="slider-val" id="valTexture">48%</span>
-        </div>
-        <div class="slider-row">
-          <label>CONTRAST / TONE</label>
-          <input type="range" id="rngContrast" min="50" max="180" value="115" />
-          <span class="slider-val" id="valContrast">115</span>
-        </div>
-        <div class="slider-row">
-          <label>INK SHIFT (X/Y)</label>
-          <input type="range" id="rngShift" min="0" max="24" value="4" />
-          <span class="slider-val" id="valShift">4px</span>
-        </div>
-        <div class="slider-row">
-          <label>FRAME MARGIN</label>
-          <input type="range" id="rngMargin" min="0" max="22" value="0" />
-          <span class="slider-val" id="valMargin">0%</span>
-        </div>
-        <!-- PWA Icon Exporter inside Settings Drawer -->
-        <div class="icon-dl-box">
-          <span style="font-size:11px; color:var(--text-muted); flex:1;">PWA ICONS (PNG)</span>
-          <button class="btn" id="btnDl192" style="padding:5px 9px; font-size:11px;">192×192</button>
-          <button class="btn" id="btnDl512" style="padding:5px 9px; font-size:11px;">512×512</button>
-        </div>
+        <div class="swatch-auto" id="btnAutoBalance" title="Auto Reset Tone">A</div>
       </div>
 
       <!-- 3 Main Action Buttons -->
@@ -522,7 +631,7 @@
           <span>&#9860;</span> RANDOM
         </button>
         <button class="btn matrix-btn" id="btnStyle">
-          <span>&#9861;</span> STYLE: <span id="lblStyle">ROSETTE</span>
+          <span>&#9861;</span> STYLE
         </button>
         <button class="btn matrix-btn" id="btnFrame">
           <span>&#9859;</span> FRAME
@@ -532,17 +641,17 @@
       <!-- Bottom Quick Bar -->
       <div class="bottom-bar">
         <div class="bottom-left">
-          <button class="btn" id="btnGrainToggle">&#9618; GRAIN</button>
-          <button class="btn" id="btnPaperCycle">
+          <button class="btn" id="btnGrain">&#9618; GRAIN</button>
+          <button class="btn" id="btnPaper">
             <span class="paper-indicator" id="paperDot"></span> PAPER
           </button>
         </div>
-        <button class="btn" id="btnToneDrawer">&gt; TONE</button>
+        <button class="btn" id="btnTone">&gt; TONE</button>
       </div>
     </aside>
   </main>
 
-  <!-- Preset Grid Modal (Screenshot 1) -->
+  <!-- Preset Grid Modal -->
   <div class="modal-overlay" id="presetModal">
     <div class="modal-header">
       <button class="btn" id="btnClosePresets">CLOSE</button>
@@ -553,44 +662,48 @@
 
   <script>
     /**************************************************************
-     * RisoPrint Studio Core Engine
+     * RisoPrint Studio Core Engine (v2 Popup & Bold Edition)
      **************************************************************/
     const INKS = [
-      { id: 'black',      name: 'BLACK',       hex: '#141414', r: 20,  g: 20,  b: 20,  hatched: false },
-      { id: 'blue',       name: 'BLUE',        hex: '#0078bf', r: 0,   g: 120, b: 191, hatched: false },
-      { id: 'pink',       name: 'PINK',        hex: '#ff48b0', r: 255, g: 72,  b: 176, hatched: false },
-      { id: 'green',      name: 'GREEN',       hex: '#00a95c', r: 0,   g: 169, b: 92,  hatched: false },
-      { id: 'orange',     name: 'ORANGE',      hex: '#ff6c2f', r: 255, g: 108, b: 47,  hatched: false },
-      { id: 'red',        name: 'RED',         hex: '#ff665e', r: 255, g: 102, b: 94,  hatched: false },
-      { id: 'yellow',     name: 'YELLOW',      hex: '#ffe800', r: 255, g: 232, b: 0,   hatched: false },
-      { id: 'burgundy',   name: 'CRIMSON',     hex: '#914e56', r: 145, g: 78,  b: 86,  hatched: true  },
-      { id: 'indigo',     name: 'INDIGO',      hex: '#3d5588', r: 61,  g: 85,  b: 136, hatched: true  },
-      { id: 'violet',     name: 'VIOLET',      hex: '#765ba7', r: 118, g: 91,  b: 167, hatched: true  },
-      { id: 'teal',       name: 'TEAL',        hex: '#236868', r: 35,  g: 104, b: 104, hatched: true  },
-      { id: 'slate',      name: 'SLATE',       hex: '#5e6973', r: 94,  g: 105, b: 115, hatched: true  }
+      { id: 'black',    name: 'BLACK',   hex: '#141414', r: 20,  g: 20,  b: 20,  hatched: false },
+      { id: 'blue',     name: 'BLUE',    hex: '#0078bf', r: 0,   g: 120, b: 191, hatched: false },
+      { id: 'pink',     name: 'PINK',    hex: '#ff48b0', r: 255, g: 72,  b: 176, hatched: false },
+      { id: 'green',    name: 'GREEN',   hex: '#00a95c', r: 0,   g: 169, b: 92,  hatched: false },
+      { id: 'orange',   name: 'ORANGE',  hex: '#ff6c2f', r: 255, g: 108, b: 47,  hatched: false },
+      { id: 'red',      name: 'RED',     hex: '#ff665e', r: 255, g: 102, b: 94,  hatched: false },
+      { id: 'yellow',   name: 'YELLOW',  hex: '#ffe800', r: 255, g: 232, b: 0,   hatched: false },
+      { id: 'burgundy', name: 'CRIMSON', hex: '#914e56', r: 145, g: 78,  b: 86,  hatched: true  },
+      { id: 'indigo',   name: 'INDIGO',  hex: '#3d5588', r: 61,  g: 85,  b: 136, hatched: true  },
+      { id: 'violet',   name: 'VIOLET',  hex: '#765ba7', r: 118, g: 91,  b: 167, hatched: true  },
+      { id: 'teal',     name: 'TEAL',    hex: '#236868', r: 35,  g: 104, b: 104, hatched: true  },
+      { id: 'slate',    name: 'SLATE',   hex: '#5e6973', r: 94,  g: 105, b: 115, hatched: true  }
     ];
 
     const PAPERS = [
-      { id: 'cream', name: 'CREAM', hex: '#ece6d8', r: 236, g: 230, b: 216, darkFiber: false },
-      { id: 'white', name: 'WHITE', hex: '#fafafa', r: 250, g: 250, b: 250, darkFiber: false },
-      { id: 'kraft', name: 'KRAFT', hex: '#b69567', r: 182, g: 149, b: 103, darkFiber: true  },
-      { id: 'news',  name: 'NEWS',  hex: '#d8d2c5', r: 216, g: 210, b: 197, darkFiber: true  }
+      { id: 'cream', name: 'CREAM PAPER', hex: '#ece6d8', r: 236, g: 230, b: 216, darkFiber: false },
+      { id: 'white', name: 'PURE WHITE',  hex: '#fafafa', r: 250, g: 250, b: 250, darkFiber: false },
+      { id: 'kraft', name: 'KRAFT BROWN', hex: '#b69567', r: 182, g: 149, b: 103, darkFiber: true  },
+      { id: 'news',  name: 'NEWSPRINT',   hex: '#d8d2c5', r: 216, g: 210, b: 197, darkFiber: true  }
     ];
 
-    const STYLES = ['ROSETTE', 'HALFTONE', 'GRAIN', 'HATCH'];
+    const STYLES = [
+      { id: 'ROSETTE',  label: 'ROSETTE (網点ロゼット)' },
+      { id: 'HALFTONE', label: 'HALFTONE (ドット網点)' },
+      { id: 'GRAIN',    label: 'GRAIN (砂目リソグラフ)' },
+      { id: 'HATCH',    label: 'HATCH (クロス万線)' }
+    ];
 
     const DEFAULT_PRESETS = [
-      { title: 'Red + Black',           inks: ['red', 'black'],            paper: 'white', style: 'ROSETTE',  margin: 14, shift: 3 },
-      { title: 'Yellow + Blue',         inks: ['yellow', 'blue'],          paper: 'cream', style: 'GRAIN',    margin: 14, shift: 4 },
-      { title: 'Black + Pink',          inks: ['black', 'pink'],           paper: 'kraft', style: 'ROSETTE',  margin: 14, shift: 3 },
-      { title: 'Yellow + Pink + Blue',  inks: ['yellow', 'pink', 'blue'],  paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
-      { title: 'Pink + Blue Rosette',   inks: ['pink', 'blue'],            paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
-      { title: 'Yellow + Red + Blue',   inks: ['yellow', 'red', 'blue'],   paper: 'cream', style: 'HALFTONE', margin: 14, shift: 4 },
-      { title: 'Orange + Black Kraft',  inks: ['orange', 'black'],         paper: 'kraft', style: 'ROSETTE',  margin: 0,  shift: 3 },
-      { title: 'Orange + Green Shift',  inks: ['orange', 'green'],         paper: 'cream', style: 'GRAIN',    margin: 15, shift: 16 }
+      { title: 'Red + Black',           inks: ['red', 'black'],           paper: 'white', style: 'ROSETTE',  margin: 14, shift: 3 },
+      { title: 'Yellow + Blue',         inks: ['yellow', 'blue'],         paper: 'cream', style: 'GRAIN',    margin: 14, shift: 4 },
+      { title: 'Black + Pink',          inks: ['black', 'pink'],          paper: 'kraft', style: 'ROSETTE',  margin: 14, shift: 3 },
+      { title: 'Yellow + Pink + Blue',  inks: ['yellow', 'pink', 'blue'], paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
+      { title: 'Pink + Blue Rosette',   inks: ['pink', 'blue'],           paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
+      { title: 'Yellow + Red + Blue',   inks: ['yellow', 'red', 'blue'],  paper: 'cream', style: 'HALFTONE', margin: 14, shift: 4 },
+      { title: 'Orange + Black Kraft',  inks: ['orange', 'black'],        paper: 'kraft', style: 'ROSETTE',  margin: 0,  shift: 3 },
+      { title: 'Orange + Green Shift',  inks: ['orange', 'green'],        paper: 'cream', style: 'GRAIN',    margin: 15, shift: 16 }
     ];
 
-    // App State
     const state = {
       inks: ['yellow', 'orange', 'blue'],
       activeTabIndex: 0,
@@ -599,37 +712,50 @@
       dotSize: 5.5,
       texture: 48,
       contrast: 115,
+      brightness: 0,
       shift: 4,
       margin: 0,
+      radius: 18,
+      activePopup: null,
       sourceImage: null,
       presets: [...DEFAULT_PRESETS]
     };
 
-    // Load saved presets
     try {
       const saved = localStorage.getItem('risoprint_custom_presets');
-      if (saved) {
-        state.presets = [...DEFAULT_PRESETS, ...JSON.parse(saved)];
-      }
+      if (saved) state.presets = [...DEFAULT_PRESETS, ...JSON.parse(saved)];
     } catch (e) {}
 
-    // DOM Elements
     const mainCanvas = document.getElementById('mainCanvas');
-    const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
     const inkTabsBar = document.getElementById('inkTabsBar');
     const swatchBar = document.getElementById('swatchBar');
-    const drawerPanel = document.getElementById('drawerPanel');
     const paperDot = document.getElementById('paperDot');
-    const lblStyle = document.getElementById('lblStyle');
+    const popupSheet = document.getElementById('popupSheet');
+    const popupBackdrop = document.getElementById('popupBackdrop');
+    const popupTitle = document.getElementById('popupTitle');
+    const popupBody = document.getElementById('popupBody');
+    const toastMsg = document.getElementById('toastMsg');
 
-    // Generate procedural default sample image (retro tortoise/creature on sand like screenshot)
+    let toastTimer = null;
+    function showToast(text) {
+      toastMsg.textContent = text;
+      toastMsg.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastMsg.classList.remove('show'), 1100);
+    }
+
+    function flashButton(btn) {
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 150);
+    }
+
+    // Generate default sample image
     function createDefaultImage() {
       const c = document.createElement('canvas');
       c.width = 900;
       c.height = 900;
       const g = c.getContext('2d');
 
-      // Sand background gradient
       const bgGrad = g.createLinearGradient(0, 0, 0, 900);
       bgGrad.addColorStop(0, '#726c62');
       bgGrad.addColorStop(0.3, '#aca495');
@@ -638,7 +764,6 @@
       g.fillStyle = bgGrad;
       g.fillRect(0, 0, 900, 900);
 
-      // Dunes / Sand ripples
       for (let i = 0; i < 6500; i++) {
         const x = Math.random() * 900;
         const y = Math.random() * 900;
@@ -649,13 +774,11 @@
         g.fill();
       }
 
-      // Deep shadow under subject
       g.fillStyle = '#202624';
       g.beginPath();
       g.ellipse(470, 520, 220, 95, -0.08, 0, Math.PI * 2);
       g.fill();
 
-      // Warm reddish/orange shell/body
       const shellGrad = g.createRadialGradient(460, 380, 30, 480, 430, 240);
       shellGrad.addColorStop(0, '#ff6d24');
       shellGrad.addColorStop(0.65, '#d64515');
@@ -665,7 +788,6 @@
       g.ellipse(495, 420, 210, 145, 0.12, 0, Math.PI * 2);
       g.fill();
 
-      // Highlights on shell
       g.fillStyle = 'rgba(255, 230, 180, 0.7)';
       g.beginPath();
       g.ellipse(435, 455, 38, 18, -0.6, 0, Math.PI * 2);
@@ -679,7 +801,6 @@
       img.src = c.toDataURL();
     }
 
-    // Build UI Swatches
     function initSwatches() {
       INKS.forEach((ink) => {
         const el = document.createElement('div');
@@ -691,12 +812,12 @@
           state.inks[state.activeTabIndex] = ink.id;
           updateUI();
           renderMainCanvas();
+          showToast(`INK ${state.activeTabIndex + 1}: ${ink.name}`);
         });
         swatchBar.appendChild(el);
       });
     }
 
-    // Update UI Tabs & Active States
     function updateUI() {
       inkTabsBar.innerHTML = '';
       state.inks.forEach((inkId, idx) => {
@@ -717,6 +838,7 @@
             }
             updateUI();
             renderMainCanvas();
+            showToast('INK LAYER REMOVED');
             return;
           }
           state.activeTabIndex = idx;
@@ -729,45 +851,194 @@
         const addBtn = document.createElement('div');
         addBtn.className = 'ink-tab-add';
         addBtn.textContent = '+';
-        addBtn.title = 'Add Ink Layer (Max 3)';
+        addBtn.title = 'インク版を追加 (最大3色)';
         addBtn.addEventListener('click', () => {
           const unused = INKS.find(i => !state.inks.includes(i.id)) || INKS[0];
           state.inks.push(unused.id);
           state.activeTabIndex = state.inks.length - 1;
           updateUI();
           renderMainCanvas();
+          showToast(`ADDED: ${unused.name}`);
         });
         inkTabsBar.appendChild(addBtn);
       }
 
-      // Highlight active swatch
       const activeInkId = state.inks[state.activeTabIndex];
       document.querySelectorAll('.swatch-item').forEach(el => {
         el.classList.toggle('active', el.dataset.id === activeInkId);
       });
 
-      // Paper & Style labels
       const paper = PAPERS[state.paperIndex];
       paperDot.style.backgroundColor = paper.hex;
-      lblStyle.textContent = STYLES[state.styleIndex];
 
-      // Sliders sync
-      document.getElementById('rngDotSize').value = state.dotSize;
-      document.getElementById('valDotSize').textContent = state.dotSize;
-      document.getElementById('rngTexture').value = state.texture;
-      document.getElementById('valTexture').textContent = state.texture + '%';
-      document.getElementById('rngContrast').value = state.contrast;
-      document.getElementById('valContrast').textContent = state.contrast;
-      document.getElementById('rngShift').value = state.shift;
-      document.getElementById('valShift').textContent = state.shift + 'px';
-      document.getElementById('rngMargin').value = state.margin;
-      document.getElementById('valMargin').textContent = state.margin + '%';
+      // Active button highlight
+      const mapBtn = {
+        style: 'btnStyle',
+        frame: 'btnFrame',
+        grain: 'btnGrain',
+        paper: 'btnPaper',
+        tone: 'btnTone',
+        settings: 'btnSettings'
+      };
+      Object.entries(mapBtn).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active-toggle', state.activePopup === key);
+      });
+    }
+
+    /**************************************************************
+     * Popup Sheet Builder (Interactive Popups for Every Button)
+     **************************************************************/
+    function closePopup() {
+      state.activePopup = null;
+      popupSheet.classList.remove('open');
+      popupBackdrop.classList.remove('open');
+      updateUI();
+    }
+
+    function openPopup(type) {
+      if (state.activePopup === type) {
+        closePopup();
+        return;
+      }
+      state.activePopup = type;
+      popupBody.innerHTML = '';
+
+      if (type === 'style') {
+        popupTitle.textContent = 'SCREEN STYLE (網点パターン)';
+        const grid = document.createElement('div');
+        grid.className = 'option-grid';
+        STYLES.forEach((st, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'option-chip' + (state.styleIndex === idx ? ' active' : '');
+          btn.textContent = st.id;
+          btn.addEventListener('click', () => {
+            state.styleIndex = idx;
+            renderAll();
+            openPopup('style'); // refresh active state
+            showToast(`STYLE: ${st.id}`);
+          });
+          grid.appendChild(btn);
+        });
+        popupBody.appendChild(grid);
+        popupBody.appendChild(createSlider('DOT PITCH (網点サイズ)', 'dotSize', 2, 16, 0.5, 'px'));
+      }
+
+      else if (type === 'frame') {
+        popupTitle.textContent = 'FRAME & REGISTRATION (余白と版ズレ)';
+        const grid = document.createElement('div');
+        grid.className = 'option-grid';
+        [
+          { label: 'NONE (0%)', val: 0 },
+          { label: 'NARROW (8%)', val: 8 },
+          { label: 'MEDIUM (14%)', val: 14 },
+          { label: 'WIDE (20%)', val: 20 }
+        ].forEach(opt => {
+          const btn = document.createElement('button');
+          btn.className = 'option-chip' + (state.margin === opt.val ? ' active' : '');
+          btn.textContent = opt.label;
+          btn.addEventListener('click', () => {
+            state.margin = opt.val;
+            renderAll();
+            openPopup('frame');
+            showToast(`FRAME: ${opt.label}`);
+          });
+          grid.appendChild(btn);
+        });
+        popupBody.appendChild(grid);
+        popupBody.appendChild(createSlider('MARGIN SIZE (余白幅)', 'margin', 0, 25, 1, '%'));
+        popupBody.appendChild(createSlider('CORNER ROUND (角丸)', 'radius', 0, 60, 2, 'px'));
+        popupBody.appendChild(createSlider('INK SHIFT (版ズレ量)', 'shift', 0, 28, 1, 'px'));
+      }
+
+      else if (type === 'grain') {
+        popupTitle.textContent = 'GRAIN & DOT TEXTURE (粒子と繊維感)';
+        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
+        popupBody.appendChild(createSlider('PAPER TEXTURE (紙の荒さ)', 'texture', 0, 100, 1, '%'));
+        popupBody.appendChild(createSlider('INK SHIFT (版ズレ)', 'shift', 0, 28, 1, 'px'));
+      }
+
+      else if (type === 'paper') {
+        popupTitle.textContent = 'PAPER STOCK (用紙選択)';
+        const grid = document.createElement('div');
+        grid.className = 'option-grid';
+        PAPERS.forEach((p, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'option-chip' + (state.paperIndex === idx ? ' active' : '');
+          btn.innerHTML = `<span class="paper-indicator" style="background:${p.hex}"></span><span>${p.name}</span>`;
+          btn.addEventListener('click', () => {
+            state.paperIndex = idx;
+            renderAll();
+            openPopup('paper');
+            showToast(`PAPER: ${p.name}`);
+          });
+          grid.appendChild(btn);
+        });
+        popupBody.appendChild(grid);
+        popupBody.appendChild(createSlider('FIBER TEXTURE (繊維の濃さ)', 'texture', 0, 100, 1, '%'));
+      }
+
+      else if (type === 'tone') {
+        popupTitle.textContent = 'TONE & CONTRAST (階調・濃淡調整)';
+        popupBody.appendChild(createSlider('CONTRAST (コントラスト)', 'contrast', 50, 190, 1, '%'));
+        popupBody.appendChild(createSlider('BRIGHTNESS (明るさ)', 'brightness', -50, 50, 1, ''));
+        popupBody.appendChild(createSlider('DOT SIZE (網点サイズ)', 'dotSize', 2, 16, 0.5, 'px'));
+      }
+
+      else if (type === 'settings') {
+        popupTitle.textContent = 'PWA ICONS & EXPORT SETTINGS';
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '10px';
+        row.innerHTML = `
+          <button class="btn" id="popDl192" style="flex:1;">ICON 192×192 PNG</button>
+          <button class="btn" id="popDl512" style="flex:1;">ICON 512×512 PNG</button>
+        `;
+        popupBody.appendChild(row);
+        setTimeout(() => {
+          document.getElementById('popDl192')?.addEventListener('click', () => downloadPWAIcon(192));
+          document.getElementById('popDl512')?.addEventListener('click', () => downloadPWAIcon(512));
+        }, 0);
+      }
+
+      popupSheet.classList.add('open');
+      popupBackdrop.classList.add('open');
+      updateUI();
+    }
+
+    function createSlider(label, key, min, max, step, unit) {
+      const row = document.createElement('div');
+      row.className = 'slider-row';
+      const valSpan = document.createElement('span');
+      valSpan.className = 'slider-val';
+      valSpan.textContent = state[key] + unit;
+
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.min = min;
+      input.max = max;
+      input.step = step;
+      input.value = state[key];
+
+      input.addEventListener('input', (e) => {
+        state[key] = parseFloat(e.target.value);
+        valSpan.textContent = state[key] + unit;
+        renderMainCanvas();
+      });
+
+      const lbl = document.createElement('label');
+      lbl.textContent = label;
+
+      row.appendChild(lbl);
+      row.appendChild(input);
+      row.appendChild(valSpan);
+      return row;
     }
 
     /**
      * Core Riso / Halftone Renderer
      */
-    function renderRisoToCanvas(targetCanvas, config, workWidth = 900) {
+    function renderRisoToCanvas(targetCanvas, config, workWidth = 880) {
       if (!state.sourceImage) return;
 
       const img = state.sourceImage;
@@ -783,15 +1054,14 @@
       const styleMode = config.styleMode || 'ROSETTE';
       const dotSize = config.dotSize || 5.5;
       const contrast = (config.contrast || 115) / 100;
+      const brightOffset = (config.brightness || 0) / 100;
       const textureAmt = (config.texture ?? 48) / 100;
       const marginRatio = (config.margin || 0) / 100;
-      const shiftPx = (config.shift ?? 4) * (workWidth / 900);
+      const shiftPx = (config.shift ?? 4) * (workWidth / 880);
 
-      // 1. Draw Base Paper
       tCtx.fillStyle = paper.hex;
       tCtx.fillRect(0, 0, w, h);
 
-      // Draw image offscreen to read pixels
       const padX = Math.round(w * marginRatio);
       const padY = Math.round(h * marginRatio);
       const innerW = Math.max(10, w - padX * 2);
@@ -804,47 +1074,34 @@
       srcCtx.drawImage(img, 0, 0, innerW, innerH);
       const srcData = srcCtx.getImageData(0, 0, innerW, innerH).data;
 
-      // Prepare Output ImageData
       const outImgData = tCtx.getImageData(0, 0, w, h);
       const out = outImgData.data;
 
       const inkObjs = config.inks.map(id => INKS.find(i => i.id === id) || INKS[0]);
-      const angles = [0.26, 1.30, 0.78]; // ~15deg, ~75deg, ~45deg for rosette
+      const angles = [0.26, 1.30, 0.78];
 
-      const freq = (Math.PI * 2) / Math.max(2, dotSize * (workWidth / 900));
-      const cornerRadius = marginRatio > 0 ? Math.round(Math.min(innerW, innerH) * 0.03) : 0;
+      const freq = (Math.PI * 2) / Math.max(2, dotSize * (workWidth / 880));
+      const cornerRadius = marginRatio > 0 ? Math.round((config.radius ?? 18) * (workWidth / 880)) : 0;
 
-      // Helper for rounded rect mask
       function insideRoundedRect(x, y, rw, rh, rad) {
         if (x < 0 || y < 0 || x >= rw || y >= rh) return false;
         if (rad <= 0) return true;
-        if (x < rad && y < rad) {
-          return (x - rad) ** 2 + (y - rad) ** 2 <= rad * rad;
-        }
-        if (x > rw - rad && y < rad) {
-          return (x - (rw - rad)) ** 2 + (y - rad) ** 2 <= rad * rad;
-        }
-        if (x < rad && y > rh - rad) {
-          return (x - rad) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
-        }
-        if (x > rw - rad && y > rh - rad) {
-          return (x - (rw - rad)) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
-        }
+        if (x < rad && y < rad) return (x - rad) ** 2 + (y - rad) ** 2 <= rad * rad;
+        if (x > rw - rad && y < rad) return (x - (rw - rad)) ** 2 + (y - rad) ** 2 <= rad * rad;
+        if (x < rad && y > rh - rad) return (x - rad) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
+        if (x > rw - rad && y > rh - rad) return (x - (rw - rad)) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
         return true;
       }
 
-      // Deterministic hash noise for authentic grain & textile weave
       function hashNoise(x, y) {
         const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         return n - Math.floor(n);
       }
 
-      // 2. Process Layers & Screen Pattern
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const outIdx = (y * w + x) * 4;
 
-          // Base paper color + woven fabric/kraft grain
           const weave = (Math.sin(x * 1.4) + Math.cos(y * 1.4)) * 0.5;
           const fineGrain = (hashNoise(x, y) - 0.5) * 2;
           const fiberDelta = (weave * 7 + fineGrain * 18) * textureAmt;
@@ -859,7 +1116,6 @@
             pb -= 18 * textureAmt;
           }
 
-          // Accumulate each ink layer using Subtractive / Multiply Riso blending
           for (let k = 0; k < inkObjs.length; k++) {
             const ink = inkObjs[k];
             const shiftX = k === 0 ? 0 : (k === 1 ? shiftPx : -shiftPx * 0.7);
@@ -871,11 +1127,10 @@
             if (!insideRoundedRect(sx, sy, innerW, innerH, cornerRadius)) continue;
 
             const pIdx = (sy * innerW + sx) * 4;
-            const r = srcData[pIdx] / 255;
-            const g = srcData[pIdx + 1] / 255;
-            const b = srcData[pIdx + 2] / 255;
+            const r = Math.min(1, Math.max(0, srcData[pIdx] / 255 + brightOffset));
+            const g = Math.min(1, Math.max(0, srcData[pIdx + 1] / 255 + brightOffset));
+            const b = Math.min(1, Math.max(0, srcData[pIdx + 2] / 255 + brightOffset));
 
-            // Calculate channel separation density based on number of inks
             let density = 0;
             const luma = 0.299 * r + 0.587 * g + 0.114 * b;
             const cLuma = Math.min(1, Math.max(0, (luma - 0.5) * contrast + 0.5));
@@ -884,27 +1139,21 @@
               density = 1 - cLuma;
             } else if (inkObjs.length === 2) {
               if (k === 0) {
-                // Warm / Highlight-midtone plate
                 const warmDiff = Math.max(0, r - b * 0.65);
                 density = Math.min(1, warmDiff * 1.35 + (1 - cLuma) * 0.45);
               } else {
-                // Shadow / Cool plate
                 density = Math.pow(1 - cLuma, 1.15);
               }
             } else {
               if (k === 0) {
-                // Plate 1 (e.g. Yellow / Warm)
                 density = Math.min(1, Math.max(0, (r + g * 0.5 - b) * 0.9));
               } else if (k === 1) {
-                // Plate 2 (e.g. Orange / Pink / Red)
                 density = Math.min(1, Math.max(0, (r - g * 0.35) * 1.25 + (1 - cLuma) * 0.25));
               } else {
-                // Plate 3 (e.g. Blue / Black / Shadow)
                 density = Math.pow(1 - cLuma, 1.25);
               }
             }
 
-            // Screen modulation (Rosette / Halftone / Grain / Hatch)
             const ang = angles[k % 3];
             const rx = x * Math.cos(ang) - y * Math.sin(ang);
             const ry = x * Math.sin(ang) + y * Math.cos(ang);
@@ -921,11 +1170,9 @@
               threshold = (Math.sin(rx * freq * 1.25) * 0.45 + 0.5) * 0.85 + fineGrain * 0.08;
             }
 
-            // Soft ink bleed edge
             const inkAlpha = Math.min(1, Math.max(0, (density - threshold + 0.14) * 3.6));
 
             if (inkAlpha > 0.01) {
-              // Riso ink translucent multiply + vibrant pigment mix
               const strength = 0.86 * inkAlpha;
               const multR = (pr * ink.r) / 255;
               const multG = (pg * ink.g) / 255;
@@ -955,17 +1202,19 @@
       return {
         inks: [...state.inks],
         paperId: PAPERS[state.paperIndex].id,
-        styleMode: STYLES[state.styleIndex],
+        styleMode: STYLES[state.styleIndex].id,
         dotSize: state.dotSize,
         texture: state.texture,
         contrast: state.contrast,
+        brightness: state.brightness,
         shift: state.shift,
-        margin: state.margin
+        margin: state.margin,
+        radius: state.radius
       };
     }
 
     function renderMainCanvas() {
-      renderRisoToCanvas(mainCanvas, getCurrentConfig(), 880);
+      renderRisoToCanvas(mainCanvas, getCurrentConfig(), 840);
     }
 
     function renderAll() {
@@ -973,7 +1222,6 @@
       renderMainCanvas();
     }
 
-    // Preset Grid Renderer
     function renderPresetGrid() {
       const grid = document.getElementById('presetGrid');
       grid.innerHTML = '';
@@ -997,7 +1245,6 @@
         card.appendChild(title);
         grid.appendChild(card);
 
-        // Render thumbnail
         setTimeout(() => {
           renderRisoToCanvas(thumbCanvas, {
             inks: p.inks,
@@ -1007,8 +1254,9 @@
             texture: 48,
             contrast: 115,
             shift: p.shift ?? 4,
-            margin: p.margin ?? 14
-          }, 260);
+            margin: p.margin ?? 14,
+            radius: 18
+          }, 240);
         }, 10);
 
         card.addEventListener('click', () => {
@@ -1016,20 +1264,18 @@
           state.activeTabIndex = 0;
           const pIdx = PAPERS.findIndex(item => item.id === p.paper);
           if (pIdx !== -1) state.paperIndex = pIdx;
-          const sIdx = STYLES.indexOf(p.style);
+          const sIdx = STYLES.findIndex(item => item.id === p.style);
           if (sIdx !== -1) state.styleIndex = sIdx;
           state.margin = p.margin ?? 14;
           state.shift = p.shift ?? 4;
 
           document.getElementById('presetModal').classList.remove('open');
           renderAll();
+          showToast(`PRESET: ${p.title}`);
         });
       });
     }
 
-    /**************************************************************
-     * PWA Icon Generator (192x192 & 512x512 PNG)
-     **************************************************************/
     function downloadPWAIcon(size) {
       const c = document.createElement('canvas');
       c.width = size;
@@ -1037,11 +1283,9 @@
       const g = c.getContext('2d');
       const s = size / 512;
 
-      // Dark matte card background
       g.fillStyle = '#121212';
       g.fillRect(0, 0, size, size);
 
-      // Inner frame
       g.fillStyle = '#1c1c1c';
       g.strokeStyle = '#333333';
       g.lineWidth = 8 * s;
@@ -1052,9 +1296,7 @@
       g.fill();
       g.stroke();
 
-      // Riso overlapping halftone circles (Pink, Blue, Yellow)
       g.globalCompositeOperation = 'screen';
-
       g.fillStyle = '#ff48b0';
       g.beginPath();
       g.arc(215 * s, 235 * s, 105 * s, 0, Math.PI * 2);
@@ -1072,17 +1314,6 @@
 
       g.globalCompositeOperation = 'source-over';
 
-      // Subtle grain overlay on icon
-      const imgData = g.getImageData(0, 0, size, size);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const noise = (Math.random() - 0.5) * 18;
-        d[i]     = Math.min(255, Math.max(0, d[i] + noise));
-        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + noise));
-        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + noise));
-      }
-      g.putImageData(imgData, 0, 0);
-
       c.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1094,7 +1325,7 @@
     }
 
     /**************************************************************
-     * Event Listeners
+     * Event Bindings
      **************************************************************/
     document.getElementById('btnUpload').addEventListener('click', () => {
       document.getElementById('fileInput').click();
@@ -1109,77 +1340,58 @@
         img.onload = () => {
           state.sourceImage = img;
           renderMainCanvas();
+          showToast('IMAGE LOADED');
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     });
 
-    document.getElementById('btnQuickInvert').addEventListener('click', () => {
+    document.getElementById('btnQuickInvert').addEventListener('click', (e) => {
+      flashButton(e.currentTarget);
       state.inks.reverse();
       renderAll();
+      showToast('INK ORDER INVERTED');
     });
 
     document.getElementById('btnAutoBalance').addEventListener('click', () => {
       state.dotSize = 5.5;
       state.texture = 48;
       state.contrast = 115;
+      state.brightness = 0;
       state.shift = 4;
       renderAll();
+      if (state.activePopup) openPopup(state.activePopup);
+      showToast('RESET TO AUTO TONE');
     });
 
-    document.getElementById('btnRandom').addEventListener('click', () => {
-      const count = Math.random() > 0.38 ? 2 : 3;
+    document.getElementById('btnRandom').addEventListener('click', (e) => {
+      flashButton(e.currentTarget);
+      const count = Math.random() > 0.35 ? 2 : 3;
       const shuffled = [...INKS].sort(() => 0.5 - Math.random());
       state.inks = shuffled.slice(0, count).map(i => i.id);
       state.activeTabIndex = 0;
       state.paperIndex = Math.floor(Math.random() * PAPERS.length);
       state.styleIndex = Math.floor(Math.random() * STYLES.length);
       renderAll();
+      const names = state.inks.map(id => INKS.find(i => i.id === id).name).join(' + ');
+      showToast(`RANDOM: ${names}`);
     });
 
-    document.getElementById('btnStyle').addEventListener('click', () => {
-      state.styleIndex = (state.styleIndex + 1) % STYLES.length;
-      renderAll();
-    });
+    // Popup Trigger Buttons
+    document.getElementById('btnStyle').addEventListener('click', () => openPopup('style'));
+    document.getElementById('btnFrame').addEventListener('click', () => openPopup('frame'));
+    document.getElementById('btnGrain').addEventListener('click', () => openPopup('grain'));
+    document.getElementById('btnPaper').addEventListener('click', () => openPopup('paper'));
+    document.getElementById('btnTone').addEventListener('click', () => openPopup('tone'));
+    document.getElementById('btnSettings').addEventListener('click', () => openPopup('settings'));
 
-    document.getElementById('btnFrame').addEventListener('click', () => {
-      const margins = [0, 10, 15, 20];
-      const nextIdx = (margins.indexOf(state.margin) + 1) % margins.length;
-      state.margin = margins[nextIdx];
-      renderAll();
-    });
-
-    document.getElementById('btnGrainToggle').addEventListener('click', () => {
-      state.texture = state.texture > 10 ? 0 : 55;
-      renderAll();
-    });
-
-    document.getElementById('btnPaperCycle').addEventListener('click', () => {
-      state.paperIndex = (state.paperIndex + 1) % PAPERS.length;
-      renderAll();
-    });
-
-    const toggleDrawer = () => drawerPanel.classList.toggle('open');
-    document.getElementById('btnToneDrawer').addEventListener('click', toggleDrawer);
-    document.getElementById('btnSettings').addEventListener('click', toggleDrawer);
-
-    // Sliders
-    const bindSlider = (id, key) => {
-      document.getElementById(id).addEventListener('input', (e) => {
-        state[key] = parseFloat(e.target.value);
-        updateUI();
-        renderMainCanvas();
-      });
-    };
-    bindSlider('rngDotSize', 'dotSize');
-    bindSlider('rngTexture', 'texture');
-    bindSlider('rngContrast', 'contrast');
-    bindSlider('rngShift', 'shift');
-    bindSlider('rngMargin', 'margin');
+    document.getElementById('btnClosePopup').addEventListener('click', closePopup);
+    popupBackdrop.addEventListener('click', closePopup);
 
     // Presets Modal
     document.getElementById('btnOpenPresets').addEventListener('click', () => {
+      closePopup();
       document.getElementById('presetModal').classList.add('open');
       renderPresetGrid();
     });
@@ -1200,7 +1412,7 @@
         title: title + ' Custom',
         inks: [...state.inks],
         paper: PAPERS[state.paperIndex].id,
-        style: STYLES[state.styleIndex],
+        style: STYLES[state.styleIndex].id,
         margin: state.margin || 14,
         shift: state.shift
       };
@@ -1211,36 +1423,34 @@
         localStorage.setItem('risoprint_custom_presets', JSON.stringify(customOnly));
       } catch (e) {}
       renderPresetGrid();
+      showToast('PRESET SAVED');
     });
 
     // High-Res Export
-    document.getElementById('btnExport').addEventListener('click', () => {
-      const exportCanvas = document.createElement('canvas');
-      renderRisoToCanvas(exportCanvas, getCurrentConfig(), 2000);
-      exportCanvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `risoprint-${Date.now()}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 'image/png');
+    document.getElementById('btnExport').addEventListener('click', (e) => {
+      flashButton(e.currentTarget);
+      showToast('EXPORTING HIGH-RES PNG...');
+      setTimeout(() => {
+        const exportCanvas = document.createElement('canvas');
+        renderRisoToCanvas(exportCanvas, getCurrentConfig(), 2000);
+        exportCanvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `risoprint-${Date.now()}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      }, 50);
     });
 
-    // PWA Icon Download Buttons
-    document.getElementById('btnDl192').addEventListener('click', () => downloadPWAIcon(192));
-    document.getElementById('btnDl512').addEventListener('click', () => downloadPWAIcon(512));
-
-    // Initialize
+    // Init
     initSwatches();
     createDefaultImage();
 
-    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch((err) => {
-          console.warn('SW registration skipped:', err);
-        });
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
       });
     }
   </script>
