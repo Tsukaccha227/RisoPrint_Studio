@@ -1,1690 +1,1248 @@
-```html
 <!DOCTYPE html>
-<html lang="ja" class="dark">
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RisoPrint Studio — レトロ印刷・リソグラフ変換スタジオ</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RisoPrint Studio</title>
+
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="RisoPrint" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+
   <style>
     :root {
-      --bg-main: #111111;
+      --bg-dark: #121212;
       --bg-panel: #181818;
-      --bg-card: #202020;
+      --bg-button: #1d1d1d;
       --border-color: #2e2e2e;
-      --border-active: #555555;
-      --text-primary: #f0f0f0;
+      --text-main: #e8e8e8;
       --text-muted: #8c8c8c;
+      --accent: #ffffff;
+      --font-mono: 'SF Mono', 'JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
     }
 
     * {
       box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      padding: 0;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-primary);
-      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace, sans-serif;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #141414;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #444;
+    /* Top Bar */
+    .top-bar {
+      height: 54px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
+      z-index: 20;
     }
 
-    /* Tactile Dark UI Buttons matching Screenshots */
-    .tactile-btn {
-      background-color: #181818;
-      border: 1px solid #2e2e2e;
-      color: #e5e5e5;
-      transition: all 0.15s ease;
-      letter-spacing: 0.06em;
-      font-size: 0.78rem;
-      font-weight: 500;
+    .top-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .tactile-btn:hover {
-      background-color: #242424;
-      border-color: #484848;
+
+    .btn {
+      background: var(--bg-button);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 13px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 2px;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .tactile-btn:active {
+
+    .btn:hover {
+      background: #252525;
+      border-color: #444;
+    }
+
+    .btn:active {
       transform: translateY(1px);
-      background-color: #141414;
-    }
-    .tactile-btn.active-mode {
-      border-color: #d4d4d4;
-      background-color: #282828;
     }
 
-    /* Striped disabled/special pattern like SAVE PRESET in screenshot */
-    .striped-btn {
+    .btn-icon {
+      padding: 8px 10px;
+    }
+
+    /* Main Workspace (Responsive 2-column for Z Fold / Tablet / Desktop) */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .canvas-stage {
+      flex: 1;
+      background: #0d0d0d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      padding: 12px;
+    }
+
+    #mainCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+      transition: opacity 0.15s;
+    }
+
+    /* Controls Deck */
+    .controls-deck {
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 15;
+    }
+
+    /* Ink Layer Tabs */
+    .ink-tabs-bar {
+      display: flex;
+      align-items: center;
+      background: #0f0f0f;
+      border-bottom: 1px solid var(--border-color);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .ink-tabs-bar::-webkit-scrollbar { display: none; }
+
+    .ink-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: #141414;
+      border-right: 1px solid var(--border-color);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .ink-tab.active {
+      background: var(--bg-panel);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .ink-dot {
+      width: 11px;
+      height: 11px;
+      border: 1px solid rgba(255,255,255,0.35);
+      display: inline-block;
+    }
+
+    .tab-close {
+      margin-left: 4px;
+      opacity: 0.6;
+      font-size: 13px;
+      padding: 0 2px;
+    }
+    .tab-close:hover { opacity: 1; }
+
+    .ink-tab-add {
+      padding: 10px 16px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 15px;
+      border-right: 1px solid var(--border-color);
+    }
+    .ink-tab-add:hover { color: var(--text-main); background: #1e1e1e; }
+
+    /* Swatch Bar */
+    .swatch-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-panel);
+      scrollbar-width: none;
+    }
+    .swatch-bar::-webkit-scrollbar { display: none; }
+
+    .swatch-auto {
+      width: 32px;
+      height: 32px;
+      border: 1px dashed #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-main);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .swatch-item {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      cursor: pointer;
+      border: 2px solid transparent;
+      position: relative;
+      transition: transform 0.1s;
+    }
+
+    .swatch-item.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 1px #000 inset;
+      transform: scale(1.06);
+    }
+
+    .swatch-item.hatched::after {
+      content: "";
+      position: absolute;
+      inset: 0;
       background: repeating-linear-gradient(
         -45deg,
-        #191919,
-        #191919 4px,
-        #232323 4px,
-        #232323 8px
-      );
-      border: 1px solid #383838;
-    }
-    .striped-btn:hover {
-      border-color: #666;
-    }
-
-    /* Ink Swatch Hatch Pattern for Special Inks */
-    .swatch-hatch {
-      background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(255,255,255,0.16),
-        rgba(255,255,255,0.16) 2px,
+         rgba(255,255,255,0.28),
+        rgba(255,255,255,0.28) 2px,
         transparent 2px,
         transparent 5px
       );
     }
 
-    /* Custom Sliders */
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
+    /* Main Action Matrix (RANDOM / STYLE / FRAME) */
+    .action-matrix {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-dark);
+    }
+
+    .matrix-btn {
+      height: 52px;
+      font-size: 12px;
+      background: #171717;
+      border: 1px solid #2b2b2b;
+    }
+
+    /* Sub Controls Drawer (Sliders for Grain / Paper / Tone / Frame) */
+    .drawer-panel {
+      background: #151515;
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .drawer-panel.open {
+      display: flex;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .slider-row label {
+      width: 110px;
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: #ffffff;
+      cursor: pointer;
+    }
+
+    .slider-val {
+      width: 38px;
+      text-align: right;
+      color: var(--text-main);
+    }
+
+    /* Bottom Bar (GRAIN / PAPER / TONE) */
+    .bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--bg-dark);
+    }
+
+    .bottom-left {
+      display: flex;
+      gap: 8px;
+    }
+
+    .paper-indicator {
+      width: 11px;
+      height: 11px;
+      display: inline-block;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* Preset Modal (Screenshot 1 Faithful Grid) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-dark);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-header {
+      height: 56px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .btn-save-preset {
+      position: relative;
+      overflow: hidden;
+      background: repeating-linear-gradient(
+        -45deg,
+        #1b1b1b,
+        #1b1b1b 4px,
+        #252525 4px,
+        #252525 8px
+      );
+    }
+
+    .preset-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 14px 40px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px 14px;
+      align-content: start;
+    }
+
+    .preset-card {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .preset-thumb-wrap {
       width: 100%;
-      height: 4px;
-      background: #2d2d2d;
-      border-radius: 2px;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 2px;
-      background: #f0f0f0;
-      border: 1px solid #111;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: 16px;
-      height: 16px;
-      border-radius: 2px;
-      background: #f0f0f0;
-      border: 1px solid #111;
-      cursor: pointer;
+      aspect-ratio: 4 / 3;
+      background: #222;
+      overflow: hidden;
+      border: 1px solid #2e2e2e;
+      position: relative;
     }
 
-    /* Checkerboard / Workspace backdrop */
-    .canvas-stage {
-      background-color: #0d0d0d;
-      background-image: radial-gradient(#222 1px, transparent 1px);
-      background-size: 16px 16px;
+    .preset-card:hover .preset-thumb-wrap {
+      border-color: #777;
     }
 
-    #previewCanvas {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
-      transition: transform 0.15s ease;
+    .preset-thumb-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preset-title {
+      font-size: 12px;
+      color: var(--text-main);
+      letter-spacing: 0.03em;
+    }
+
+    /* Foldable / Wide Layout (Galaxy Z Fold 8 & Desktop) */
+    @media (min-width: 760px) {
+      .workspace {
+        flex-direction: row;
+      }
+      .canvas-stage {
+        flex: 1;
+        height: 100%;
+      }
+      .controls-deck {
+        width: 390px;
+        height: 100%;
+        border-top: none;
+        border-left: 1px solid var(--border-color);
+        justify-content: flex-end;
+      }
+      .drawer-panel {
+        flex: 1;
+        display: flex;
+        overflow-y: auto;
+      }
+      .preset-grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 1100px;
+        margin: 0 auto;
+        width: 100%;
+      }
+    }
+
+    /* Icon Preview Box */
+    .icon-dl-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 6px;
+      border-top: 1px solid #2a2a2a;
+      margin-top: 4px;
     }
   </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col select-none">
+<body>
 
-  <!-- TOP NAVIGATION BAR (Matches Screenshot Top Header) -->
-  <header class="h-14 shrink-0 bg-[#141414] border-b border-[#262626] px-3 sm:px-5 flex items-center justify-between z-20">
-    <div class="flex items-center gap-2 sm:gap-3">
-      <!-- Upload / Reset Image Button -->
-      <div class="flex items-center">
-        <label for="imageInput" class="tactile-btn px-3 py-1.5 rounded-l cursor-pointer flex items-center gap-2">
-          <span class="font-semibold tracking-wider">IMAGE</span>
-        </label>
-        <button id="resetSampleBtn" title="サンプル画像に戻す" class="tactile-btn border-l-0 px-2.5 py-1.5 rounded-r text-neutral-400 hover:text-white">
-          ✕
-        </button>
-        <input id="imageInput" type="file" accept="image/*" class="hidden">
-      </div>
-
-      <!-- Preset Drawer Trigger -->
-      <button id="openPresetBtn" class="tactile-btn px-3.5 py-1.5 rounded flex items-center gap-1.5">
-        <span>PRESET</span>
-      </button>
-
-      <!-- Compare Original Button (Brush/Eye icon) -->
-      <button id="compareBtn" title="押している間、元画像を表示" class="tactile-btn px-2.5 py-1.5 rounded flex items-center justify-center">
-        <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+  <!-- Top Navigation Bar -->
+  <header class="top-bar">
+    <div class="top-group">
+      <button class="btn" id="btnUpload">IMAGE &times;</button>
+      <input type="file" id="fileInput" accept="image/*" hidden />
+      <button class="btn" id="btnOpenPresets">PRESET</button>
+      <button class="btn btn-icon" id="btnQuickInvert" title="Invert Ink Order">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
         </svg>
       </button>
     </div>
-
-    <!-- App Title Badge (Visible on Fold/Tablet/Desktop) -->
-    <div class="hidden md:flex items-center gap-2 text-xs tracking-widest text-neutral-400">
-      <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-      <span>RISOPRINT STUDIO</span>
-      <span id="resolutionBadge" class="text-[11px] bg-[#222] px-2 py-0.5 rounded text-neutral-400 border border-[#333]">1200×900</span>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <!-- High-Res Settings Toggle -->
-      <button id="settingsBtn" title="出力解像度・環境設定" class="tactile-btn px-2.5 py-1.5 rounded flex items-center justify-center">
-        <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <div class="top-group">
+      <button class="btn btn-icon" id="btnSettings" title="Settings & PWA Icons">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
-
-      <!-- Export Button -->
-      <button id="exportBtn" class="tactile-btn px-4 py-1.5 rounded font-semibold border-neutral-600 hover:border-white flex items-center gap-1.5">
-        <span>EXPORT</span>
-      </button>
+      <button class="btn" id="btnExport">EXPORT</button>
     </div>
   </header>
 
-  <!-- MAIN WORKSPACE: Responsive 2-Column on Fold/Tablet/Desktop, Stacked on Mobile -->
-  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-
-    <!-- LEFT / TOP: Interactive Canvas Preview Area -->
-    <section id="dropZone" class="canvas-stage relative flex-1 flex items-center justify-center p-3 sm:p-6 overflow-hidden min-h-[42vh] lg:min-h-0">
-      <canvas id="previewCanvas" class="rounded-sm"></canvas>
-
-      <!-- Drag & Drop Overlay -->
-      <div id="dropOverlay" class="pointer-events-none opacity-0 transition-opacity duration-200 absolute inset-4 border-2 border-dashed border-orange-400/80 bg-black/70 rounded-lg flex flex-col items-center justify-center gap-2 z-30">
-        <p class="text-sm tracking-widest text-orange-300 font-semibold">DROP IMAGE HERE</p>
-        <p class="text-xs text-neutral-400">写真をドロップして印刷テクスチャに変換</p>
-      </div>
-
-      <!-- Status Pill (Shows current preset / compare status) -->
-      <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-        <div id="statusBadge" class="bg-black/75 backdrop-blur-md border border-[#333] px-3 py-1 rounded text-[11px] text-neutral-300 tracking-wider">
-          PRESET: YELLOW + ORANGE + BLUE
-        </div>
-        <div id="processingIndicator" class="hidden bg-orange-500/90 text-black font-bold px-2.5 py-0.5 rounded text-[11px] tracking-wider">
-          RENDERING...
-        </div>
-      </div>
+  <!-- Workspace -->
+  <main class="workspace">
+    <section class="canvas-stage">
+      <canvas id="mainCanvas"></canvas>
     </section>
 
-    <!-- RIGHT / BOTTOM: Screenshot-inspired Control Deck -->
-    <aside class="w-full lg:w-[440px] xl:w-[480px] shrink-0 bg-[#141414] border-t lg:border-t-0 lg:border-l border-[#262626] flex flex-col justify-between overflow-y-auto">
+    <aside class="controls-deck">
+      <!-- Dynamic Ink Layer Tabs -->
+      <div class="ink-tabs-bar" id="inkTabsBar"></div>
 
-      <!-- Upper Section: Ink Plate Tabs & Swatch Selector -->
-      <div>
-        <!-- INK CHANNEL TABS (Matches: [■ YELLOW x] [■ ORANGE] [■ BLUE] [+]) -->
-        <div id="inkTabsContainer" class="flex items-center bg-[#0e0e0e] border-b border-[#262626] overflow-x-auto no-scrollbar">
-          <!-- Populated dynamically via JS -->
+      <!-- Ink Swatches -->
+      <div class="swatch-bar" id="swatchBar">
+        <div class="swatch-auto" id="btnAutoBalance" title="Auto Tone Balance">A</div>
+      </div>
+
+      <!-- Parameter Drawer -->
+      <div class="drawer-panel" id="drawerPanel">
+        <div class="slider-row">
+          <label>DOT / GRAIN SIZE</label>
+          <input type="range" id="rngDotSize" min="2" max="16" step="0.5" value="5.5" />
+          <span class="slider-val" id="valDotSize">5.5</span>
         </div>
-
-        <!-- INK SWATCH ROW (Matches Screenshot Row of Colored Squares + Hatched Swatches) -->
-        <div class="p-3 sm:p-4 border-b border-[#222]">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[11px] text-neutral-400 tracking-wider" id="activePlateLabel">PLATE 1 INK COLOR</span>
-            <span class="text-[11px] text-neutral-500" id="activeInkName">Fluorescent Orange</span>
-          </div>
-          <div id="swatchContainer" class="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5">
-            <!-- Auto Tone Toggle Button [A] -->
-            <button id="autoDistributeBtn" title="明暗チャンネル自動最適化" class="w-9 h-9 shrink-0 rounded-sm border border-dashed border-neutral-500 flex items-center justify-center text-xs font-bold text-neutral-200 hover:border-white">
-              A
-            </button>
-            <!-- Ink Swatches dynamically injected here -->
-          </div>
+        <div class="slider-row">
+          <label>PAPER TEXTURE</label>
+          <input type="range" id="rngTexture" min="0" max="100" value="48" />
+          <span class="slider-val" id="valTexture">48%</span>
         </div>
-
-        <!-- 3 DICE QUICK ACTION BUTTONS (Matches: [🎲 RANDOM] [🎲 STYLE] [🎲 FRAME]) -->
-        <div class="grid grid-cols-3 gap-2.5 p-3 sm:p-4 border-b border-[#222]">
-          <button id="diceRandomBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="3" y="3" width="18" height="18" rx="3"/>
-              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/>
-              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/>
-              <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/>
-              <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/>
-              <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
-            </svg>
-            <span>RANDOM</span>
-          </button>
-
-          <button id="diceStyleBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="3" y="3" width="18" height="18" rx="3"/>
-              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/>
-              <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
-              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/>
-            </svg>
-            <span id="styleBtnText">STYLE</span>
-          </button>
-
-          <button id="diceFrameBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="3" y="3" width="18" height="18" rx="3"/>
-              <rect x="7" y="7" width="10" height="10" rx="1"/>
-            </svg>
-            <span>FRAME</span>
-          </button>
+        <div class="slider-row">
+          <label>CONTRAST / TONE</label>
+          <input type="range" id="rngContrast" min="50" max="180" value="115" />
+          <span class="slider-val" id="valContrast">115</span>
         </div>
-
-        <!-- DETAILED PARAMETER INSPECTOR (Expandable / Interactive Sliders for Fine Control) -->
-        <div id="parameterPanel" class="p-3.5 sm:p-4 space-y-4 bg-[#161616]">
-          <!-- Sub-panel: GRAIN & SCREEN -->
-          <div id="panelGrain" class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold tracking-wider text-neutral-300">SCREEN & GRAIN PATTERN (網点・粒子)</span>
-              <select id="patternModeSelect" class="bg-[#222] border border-[#3a3a3a] text-xs rounded px-2.5 py-1 text-neutral-200 focus:outline-none">
-                <option value="rosette">Rosette (ロゼット網点)</option>
-                <option value="halftone">Halftone Dot (クラシック網点)</option>
-                <option value="grain">Stochastic Grain (砂目・リソ粒子)</option>
-                <option value="crosshatch">Crosshatch (クロスハッチ万線)</option>
-              </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>DOT / GRAIN SIZE (網点サイズ)</span>
-                  <span id="valDotSize">4.5px</span>
-                </div>
-                <input id="sliderDotSize" type="range" min="2" max="12" step="0.5" value="4.5">
-              </div>
-
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>ROUGHNESS (インクかすれ・繊維)</span>
-                  <span id="valRoughness">45%</span>
-                </div>
-                <input id="sliderRoughness" type="range" min="0" max="100" step="1" value="45">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>MISREGISTRATION X (版ズレ横)</span>
-                  <span id="valOffsetX">4px</span>
-                </div>
-                <input id="sliderOffsetX" type="range" min="-25" max="25" step="1" value="4">
-              </div>
-
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>MISREGISTRATION Y (版ズレ縦)</span>
-                  <span id="valOffsetY">-3px</span>
-                </div>
-                <input id="sliderOffsetY" type="range" min="-25" max="25" step="1" value="-3">
-              </div>
-            </div>
-          </div>
-
-          <!-- Sub-panel: PAPER & FRAME -->
-          <div id="panelPaper" class="hidden space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold tracking-wider text-neutral-300">PAPER STOCK (用紙カラー・質感)</span>
-              <span id="paperNameLabel" class="text-xs text-neutral-400">Warm Cream</span>
-            </div>
-            <div id="paperSwatches" class="flex items-center gap-2.5 pt-1">
-              <!-- Populated by JS -->
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 pt-2">
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>FRAME MARGIN (余白サイズ)</span>
-                  <span id="valMargin">8%</span>
-                </div>
-                <input id="sliderMargin" type="range" min="0" max="20" step="1" value="8">
-              </div>
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>EDGE BLEED (版枠のにじみ・角丸)</span>
-                  <span id="valCorner">12px</span>
-                </div>
-                <input id="sliderCorner" type="range" min="0" max="40" step="1" value="12">
-              </div>
-            </div>
-          </div>
-
-          <!-- Sub-panel: TONE & INK DENSITY -->
-          <div id="panelTone" class="hidden space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold tracking-wider text-neutral-300">TONE & INK DENSITY (階調・インク濃度)</span>
-              <button id="resetToneBtn" class="text-[11px] text-neutral-400 hover:text-white underline">RESET</button>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>CONTRAST (コントラスト)</span>
-                  <span id="valContrast">115%</span>
-                </div>
-                <input id="sliderContrast" type="range" min="60" max="180" step="5" value="115">
-              </div>
-              <div>
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>BRIGHTNESS (明るさ)</span>
-                  <span id="valBrightness">100%</span>
-                </div>
-                <input id="sliderBrightness" type="range" min="60" max="150" step="5" value="100">
-              </div>
-              <div class="col-span-2">
-                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
-                  <span>INK DENSITY (全体のインク乗り・濃さ)</span>
-                  <span id="valDensity">92%</span>
-                </div>
-                <input id="sliderDensity" type="range" min="40" max="140" step="2" value="92">
-              </div>
-            </div>
-          </div>
+        <div class="slider-row">
+          <label>INK SHIFT (X/Y)</label>
+          <input type="range" id="rngShift" min="0" max="24" value="4" />
+          <span class="slider-val" id="valShift">4px</span>
+        </div>
+        <div class="slider-row">
+          <label>FRAME MARGIN</label>
+          <input type="range" id="rngMargin" min="0" max="22" value="0" />
+          <span class="slider-val" id="valMargin">0%</span>
+        </div>
+        <!-- PWA Icon Exporter inside Settings Drawer -->
+        <div class="icon-dl-box">
+          <span style="font-size:11px; color:var(--text-muted); flex:1;">PWA ICONS (PNG)</span>
+          <button class="btn" id="btnDl192" style="padding:5px 9px; font-size:11px;">192×192</button>
+          <button class="btn" id="btnDl512" style="padding:5px 9px; font-size:11px;">512×512</button>
         </div>
       </div>
 
-      <!-- BOTTOM MODE BAR (Matches Screenshot: [GRAIN] [■ PAPER] ... [> TONE]) -->
-      <div class="p-3 sm:p-4 bg-[#111111] border-t border-[#242424] flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <button id="tabGrainBtn" class="tactile-btn active-mode px-3 py-2 rounded flex items-center gap-2">
-            <span class="w-3.5 h-3.5 rounded-xs border border-neutral-400 flex items-center justify-center text-[9px] leading-none">⁙</span>
-            <span>GRAIN</span>
-          </button>
+      <!-- 3 Main Action Buttons -->
+      <div class="action-matrix">
+        <button class="btn matrix-btn" id="btnRandom">
+          <span>&#9860;</span> RANDOM
+        </button>
+        <button class="btn matrix-btn" id="btnStyle">
+          <span>&#9861;</span> STYLE: <span id="lblStyle">ROSETTE</span>
+        </button>
+        <button class="btn matrix-btn" id="btnFrame">
+          <span>&#9859;</span> FRAME
+        </button>
+      </div>
 
-          <button id="tabPaperBtn" class="tactile-btn px-3 py-2 rounded flex items-center gap-2">
-            <span id="paperIndicatorBox" class="w-3.5 h-3.5 rounded-xs bg-[#ebe6da] border border-black/40 inline-block"></span>
-            <span>PAPER</span>
+      <!-- Bottom Quick Bar -->
+      <div class="bottom-bar">
+        <div class="bottom-left">
+          <button class="btn" id="btnGrainToggle">&#9618; GRAIN</button>
+          <button class="btn" id="btnPaperCycle">
+            <span class="paper-indicator" id="paperDot"></span> PAPER
           </button>
         </div>
-
-        <button id="tabToneBtn" class="tactile-btn px-3.5 py-2 rounded flex items-center gap-1.5">
-          <span class="text-neutral-400">&gt;</span>
-          <span>TONE</span>
-        </button>
+        <button class="btn" id="btnToneDrawer">&gt; TONE</button>
       </div>
     </aside>
   </main>
 
-  <!-- PRESET GALLERY MODAL (Matches 1st Screenshot with 2-Column Preview Cards & SAVE PRESET) -->
-  <div id="presetModal" class="fixed inset-0 bg-[#121212] z-50 hidden flex-col overflow-hidden">
-    <!-- Modal Header -->
-    <div class="h-16 shrink-0 px-4 sm:px-6 border-b border-[#262626] flex items-center justify-between">
-      <button id="closePresetBtn" class="tactile-btn px-4 py-2 rounded text-xs tracking-widest">
-        CLOSE
-      </button>
-
-      <span class="text-xs tracking-widest text-neutral-400 hidden sm:inline">SELECT OR SAVE PRINT PRESET</span>
-
-      <button id="saveCustomPresetBtn" class="striped-btn px-4 py-2 rounded text-xs tracking-widest text-neutral-200 flex items-center gap-1.5">
-        <span>☆</span>
-        <span>SAVE PRESET</span>
-      </button>
+  <!-- Preset Grid Modal (Screenshot 1) -->
+  <div class="modal-overlay" id="presetModal">
+    <div class="modal-header">
+      <button class="btn" id="btnClosePresets">CLOSE</button>
+      <button class="btn btn-save-preset" id="btnSavePreset">&#9734; SAVE PRESET</button>
     </div>
-
-    <!-- Preset 2-Column Grid -->
-    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div id="presetGrid" class="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
-        <!-- Dynamically rendered live thumbnail cards matching screenshot -->
-      </div>
-    </div>
-  </div>
-
-  <!-- EXPORT & RESOLUTION SETTINGS MODAL -->
-  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-    <div class="bg-[#181818] border border-[#333] rounded-md max-w-md w-full p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-[#2a2a2a] pb-3">
-        <h3 class="text-sm font-semibold tracking-wider">EXPORT & RESOLUTION (高解像度出力設定)</h3>
-        <button id="closeSettingsBtn" class="text-neutral-400 hover:text-white text-sm px-2">✕</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <label class="block text-neutral-400">出力解像度モード (EXPORT SCALE)</label>
-        <div class="grid grid-cols-1 gap-2">
-          <label class="flex items-center gap-3 p-2.5 rounded border border-[#333] bg-[#202020] cursor-pointer">
-            <input type="radio" name="exportScale" value="original" checked class="accent-orange-500">
-            <div>
-              <div class="font-semibold text-neutral-200">オリジナル最高画質 (最大2400万画素 / 6000px相当)</div>
-              <div class="text-[11px] text-neutral-400">元画像の解像度を維持したまま網点・紙質を高精細レンダリングします</div>
-            </div>
-          </label>
-          <label class="flex items-center gap-3 p-2.5 rounded border border-[#333] bg-[#202020] cursor-pointer">
-            <input type="radio" name="exportScale" value="sns" class="accent-orange-500">
-            <div>
-              <div class="font-semibold text-neutral-200">SNS・Web最適サイズ (長辺 2048px)</div>
-              <div class="text-[11px] text-neutral-400">網点の粒立ちがスマホ画面で最も映えるバランスで高速書き出しします</div>
-            </div>
-          </label>
-        </div>
-
-        <div class="pt-2">
-          <label class="block text-neutral-400 mb-1">ファイル形式 (FORMAT)</label>
-          <select id="exportFormatSelect" class="w-full bg-[#222] border border-[#3a3a3a] rounded px-3 py-2 text-neutral-200">
-            <option value="image/jpeg">JPEG (高画質 95%)</option>
-            <option value="image/png">PNG (ロスレス無劣化)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="pt-2 flex justify-end gap-2">
-        <button id="confirmExportBtn" class="tactile-btn bg-orange-600/20 border-orange-500/60 text-orange-200 px-4 py-2 rounded font-semibold">
-          今すぐ書き出す (EXPORT NOW)
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#222] border border-[#444] text-neutral-100 px-4 py-2 rounded text-xs tracking-wider shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 z-50">
-    SAVED
+    <div class="preset-grid" id="presetGrid"></div>
   </div>
 
   <script>
-    /********************************************************************
-     * RisoPrint Studio — Retro Risograph & Halftone Texture Engine
-     ********************************************************************/
-
-    // 1. Authentic Risograph Ink Palette (Matches Screenshot Swatches)
-    const RISO_INKS = [
-      { id: 'black',   name: 'Black',              hex: '#1c1c1c', rgb: [28, 28, 28],    hatched: false },
-      { id: 'blue',    name: 'Medium Blue',        hex: '#0078bf', rgb: [0, 120, 191],   hatched: false },
-      { id: 'pink',    name: 'Fluorescent Pink',   hex: '#ff48b0', rgb: [255, 72, 176],  hatched: false },
-      { id: 'green',   name: 'Kelly Green',        hex: '#00a95c', rgb: [0, 169, 92],    hatched: false },
-      { id: 'orange',  name: 'Fluorescent Orange', hex: '#ff6c2f', rgb: [255, 108, 47],  hatched: false },
-      { id: 'red',     name: 'Bright Red / Coral', hex: '#ff5252', rgb: [255, 82, 82],   hatched: false },
-      { id: 'yellow',  name: 'Sunflower Yellow',   hex: '#ffe800', rgb: [255, 232, 0],   hatched: false },
-      { id: 'burgundy',name: 'Burgundy (Deep)',    hex: '#914e72', rgb: [145, 78, 114],  hatched: true  },
-      { id: 'navy',    name: 'Federal Blue',       hex: '#2f4b85', rgb: [47, 75, 133],   hatched: true  },
-      { id: 'violet',  name: 'Risograph Violet',   hex: '#6e56a6', rgb: [110, 86, 166],  hatched: true  },
-      { id: 'teal',    name: 'Pine Teal',          hex: '#1b7a78', rgb: [27, 122, 120],  hatched: true  },
-      { id: 'gold',    name: 'Metallic Ochre',     hex: '#b88b4a', rgb: [184, 139, 74],  hatched: true  }
+    /**************************************************************
+     * RisoPrint Studio Core Engine
+     **************************************************************/
+    const INKS = [
+      { id: 'black',      name: 'BLACK',       hex: '#141414', r: 20,  g: 20,  b: 20,  hatched: false },
+      { id: 'blue',       name: 'BLUE',        hex: '#0078bf', r: 0,   g: 120, b: 191, hatched: false },
+      { id: 'pink',       name: 'PINK',        hex: '#ff48b0', r: 255, g: 72,  b: 176, hatched: false },
+      { id: 'green',      name: 'GREEN',       hex: '#00a95c', r: 0,   g: 169, b: 92,  hatched: false },
+      { id: 'orange',     name: 'ORANGE',      hex: '#ff6c2f', r: 255, g: 108, b: 47,  hatched: false },
+      { id: 'red',        name: 'RED',         hex: '#ff665e', r: 255, g: 102, b: 94,  hatched: false },
+      { id: 'yellow',     name: 'YELLOW',      hex: '#ffe800', r: 255, g: 232, b: 0,   hatched: false },
+      { id: 'burgundy',   name: 'CRIMSON',     hex: '#914e56', r: 145, g: 78,  b: 86,  hatched: true  },
+      { id: 'indigo',     name: 'INDIGO',      hex: '#3d5588', r: 61,  g: 85,  b: 136, hatched: true  },
+      { id: 'violet',     name: 'VIOLET',      hex: '#765ba7', r: 118, g: 91,  b: 167, hatched: true  },
+      { id: 'teal',       name: 'TEAL',        hex: '#236868', r: 35,  g: 104, b: 104, hatched: true  },
+      { id: 'slate',      name: 'SLATE',       hex: '#5e6973', r: 94,  g: 105, b: 115, hatched: true  }
     ];
 
-    // 2. Paper Stocks (Matches White, Cream, Kraft brown in Screenshots)
-    const PAPER_STOCKS = [
-      { id: 'cream',  name: 'Warm Cream (クリーム紙)', hex: '#ebe6da', rgb: [235, 230, 218] },
-      { id: 'white',  name: 'Pure White (上質白紙)',   hex: '#f8f8f6', rgb: [248, 248, 246] },
-      { id: 'kraft',  name: 'Kraft Brown (クラフト紙)',hex: '#b59264', rgb: [181, 146, 100] },
-      { id: 'news',   name: 'Newsprint (わら半紙)',    hex: '#dcd4c0', rgb: [220, 212, 192] },
-      { id: 'gray',   name: 'Cool Gray (グレー紙)',    hex: '#cfd3d6', rgb: [207, 211, 214] }
+    const PAPERS = [
+      { id: 'cream', name: 'CREAM', hex: '#ece6d8', r: 236, g: 230, b: 216, darkFiber: false },
+      { id: 'white', name: 'WHITE', hex: '#fafafa', r: 250, g: 250, b: 250, darkFiber: false },
+      { id: 'kraft', name: 'KRAFT', hex: '#b69567', r: 182, g: 149, b: 103, darkFiber: true  },
+      { id: 'news',  name: 'NEWS',  hex: '#d8d2c5', r: 216, g: 210, b: 197, darkFiber: true  }
     ];
 
-    // 3. Built-in Presets (Directly modeled on Screenshot 1)
-    const BUILTIN_PRESETS = [
-      {
-        name: 'Yellow + Orange + Blue',
-        plates: ['yellow', 'orange', 'blue'],
-        paper: 'cream',
-        pattern: 'rosette',
-        dotSize: 4.5,
-        roughness: 45,
-        offsetX: 4,
-        offsetY: -3,
-        margin: 0,
-        corner: 0
-      },
-      {
-        name: 'Orange + Black (Kraft)',
-        plates: ['orange', 'black'],
-        paper: 'kraft',
-        pattern: 'rosette',
-        dotSize: 4.0,
-        roughness: 55,
-        offsetX: 3,
-        offsetY: 2,
-        margin: 0,
-        corner: 0
-      },
-      {
-        name: 'Red + Black',
-        plates: ['red', 'black'],
-        paper: 'white',
-        pattern: 'halftone',
-        dotSize: 5.0,
-        roughness: 38,
-        offsetX: 3,
-        offsetY: -2,
-        margin: 12,
-        corner: 10
-      },
-      {
-        name: 'Yellow + Blue',
-        plates: ['yellow', 'blue'],
-        paper: 'cream',
-        pattern: 'grain',
-        dotSize: 4.0,
-        roughness: 52,
-        offsetX: 5,
-        offsetY: 3,
-        margin: 12,
-        corner: 12
-      },
-      {
-        name: 'Black + Pink',
-        plates: ['black', 'pink'],
-        paper: 'kraft',
-        pattern: 'rosette',
-        dotSize: 4.5,
-        roughness: 50,
-        offsetX: -4,
-        offsetY: 3,
-        margin: 12,
-        corner: 10
-      },
-      {
-        name: 'Yellow + Pink + Blue',
-        plates: ['yellow', 'pink', 'blue'],
-        paper: 'cream',
-        pattern: 'rosette',
-        dotSize: 4.5,
-        roughness: 44,
-        offsetX: 4,
-        offsetY: -3,
-        margin: 12,
-        corner: 12
-      },
-      {
-        name: 'Pink + Blue Rosette',
-        plates: ['pink', 'blue'],
-        paper: 'cream',
-        pattern: 'rosette',
-        dotSize: 5.5,
-        roughness: 40,
-        offsetX: 4,
-        offsetY: 4,
-        margin: 12,
-        corner: 12
-      },
-      {
-        name: 'Yellow + Red + Blue',
-        plates: ['yellow', 'red', 'blue'],
-        paper: 'cream',
-        pattern: 'halftone',
-        dotSize: 5.0,
-        roughness: 48,
-        offsetX: 5,
-        offsetY: -4,
-        margin: 12,
-        corner: 12
-      },
-      {
-        name: 'Orange + Green Misprint',
-        plates: ['orange', 'green'],
-        paper: 'cream',
-        pattern: 'rosette',
-        dotSize: 4.5,
-        roughness: 45,
-        offsetX: 16,
-        offsetY: -12,
-        margin: 12,
-        corner: 10
-      },
-      {
-        name: 'Pink + Blue Grain',
-        plates: ['pink', 'blue'],
-        paper: 'news',
-        pattern: 'grain',
-        dotSize: 3.5,
-        roughness: 65,
-        offsetX: 3,
-        offsetY: -3,
-        margin: 10,
-        corner: 8
-      }
+    const STYLES = ['ROSETTE', 'HALFTONE', 'GRAIN', 'HATCH'];
+
+    const DEFAULT_PRESETS = [
+      { title: 'Red + Black',           inks: ['red', 'black'],            paper: 'white', style: 'ROSETTE',  margin: 14, shift: 3 },
+      { title: 'Yellow + Blue',         inks: ['yellow', 'blue'],          paper: 'cream', style: 'GRAIN',    margin: 14, shift: 4 },
+      { title: 'Black + Pink',          inks: ['black', 'pink'],           paper: 'kraft', style: 'ROSETTE',  margin: 14, shift: 3 },
+      { title: 'Yellow + Pink + Blue',  inks: ['yellow', 'pink', 'blue'],  paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
+      { title: 'Pink + Blue Rosette',   inks: ['pink', 'blue'],            paper: 'cream', style: 'ROSETTE',  margin: 14, shift: 4 },
+      { title: 'Yellow + Red + Blue',   inks: ['yellow', 'red', 'blue'],   paper: 'cream', style: 'HALFTONE', margin: 14, shift: 4 },
+      { title: 'Orange + Black Kraft',  inks: ['orange', 'black'],         paper: 'kraft', style: 'ROSETTE',  margin: 0,  shift: 3 },
+      { title: 'Orange + Green Shift',  inks: ['orange', 'green'],         paper: 'cream', style: 'GRAIN',    margin: 15, shift: 16 }
     ];
 
-    // 4. Application State
+    // App State
     const state = {
-      plates: ['yellow', 'orange', 'blue'], // 1 to 3 ink IDs
-      activePlateIndex: 0,
-      paper: 'cream',
-      pattern: 'rosette', // 'rosette' | 'halftone' | 'grain' | 'crosshatch'
-      dotSize: 4.5,
-      roughness: 45,
-      offsetX: 4,
-      offsetY: -3,
-      margin: 0,
-      corner: 12,
+      inks: ['yellow', 'orange', 'blue'],
+      activeTabIndex: 0,
+      paperIndex: 0,
+      styleIndex: 0,
+      dotSize: 5.5,
+      texture: 48,
       contrast: 115,
-      brightness: 100,
-      density: 92,
-      activeBottomTab: 'grain',
-      isComparing: false,
-      presetName: 'Yellow + Orange + Blue',
-      customPresets: []
+      shift: 4,
+      margin: 0,
+      sourceImage: null,
+      presets: [...DEFAULT_PRESETS]
     };
 
-    // Load saved custom presets from localStorage
+    // Load saved presets
     try {
       const saved = localStorage.getItem('risoprint_custom_presets');
-      if (saved) state.customPresets = JSON.parse(saved);
-    } catch (e) {
-      console.warn('Could not read localStorage presets', e);
-    }
-
-    // Source Image & Working Buffer
-    let sourceImage = null; // HTMLImageElement or HTMLCanvasElement
-    const workCanvas = document.createElement('canvas');
-    const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
-    const previewCanvas = document.getElementById('previewCanvas');
-    const previewCtx = previewCanvas.getContext('2d');
-
-    // Pre-computed deterministic noise table for fast 60fps grain & fiber simulation
-    const NOISE_SIZE = 256;
-    const noiseTable = new Float32Array(NOISE_SIZE * NOISE_SIZE);
-    const fiberTable = new Float32Array(NOISE_SIZE * NOISE_SIZE);
-    (function initNoiseTables() {
-      let seed = 1337;
-      function rand() {
-        seed = (seed * 16807) % 2147483647;
-        return (seed - 1) / 2147483646;
+      if (saved) {
+        state.presets = [...DEFAULT_PRESETS, ...JSON.parse(saved)];
       }
-      for (let i = 0; i < noiseTable.length; i++) {
-        noiseTable[i] = rand() - 0.5;
-      }
-      // Directional paper fiber weave texture
-      for (let y = 0; y < NOISE_SIZE; y++) {
-        for (let x = 0; x < NOISE_SIZE; x++) {
-          const n1 = noiseTable[y * NOISE_SIZE + x];
-          const n2 = noiseTable[y * NOISE_SIZE + ((x + 1) % NOISE_SIZE)];
-          const n3 = noiseTable[((y + 1) % NOISE_SIZE) * NOISE_SIZE + x];
-          const weave = Math.sin(x * 0.65 + y * 0.2) * 0.18 + Math.cos(x * 0.2 - y * 0.65) * 0.18;
-          fiberTable[y * NOISE_SIZE + x] = (n1 * 0.5 + n2 * 0.25 + n3 * 0.25) + weave;
-        }
-      }
-    })();
+    } catch (e) {}
 
-    /********************************************************************
-     * Generate Default Sample Artwork (Inspired by Screenshot Subject)
-     * Warm sunlit reddish-orange subject on textured sandy blue-gray ground
-     ********************************************************************/
-    function createSampleCanvas() {
+    // DOM Elements
+    const mainCanvas = document.getElementById('mainCanvas');
+    const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+    const inkTabsBar = document.getElementById('inkTabsBar');
+    const swatchBar = document.getElementById('swatchBar');
+    const drawerPanel = document.getElementById('drawerPanel');
+    const paperDot = document.getElementById('paperDot');
+    const lblStyle = document.getElementById('lblStyle');
+
+    // Generate procedural default sample image (retro tortoise/creature on sand like screenshot)
+    function createDefaultImage() {
       const c = document.createElement('canvas');
-      c.width = 1000;
-      c.height = 1000;
-      const ctx = c.getContext('2d');
+      c.width = 900;
+      c.height = 900;
+      const g = c.getContext('2d');
 
-      // Textured ground backdrop (sandy warm-cool gradient)
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, c.height);
-      bgGrad.addColorStop(0, '#6e7c7c');
-      bgGrad.addColorStop(0.28, '#959d96');
-      bgGrad.addColorStop(0.65, '#9d8f7e');
-      bgGrad.addColorStop(1, '#7c6e5c');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, c.width, c.height);
+      // Sand background gradient
+      const bgGrad = g.createLinearGradient(0, 0, 0, 900);
+      bgGrad.addColorStop(0, '#726c62');
+      bgGrad.addColorStop(0.3, '#aca495');
+      bgGrad.addColorStop(0.7, '#9c9282');
+      bgGrad.addColorStop(1, '#797062');
+      g.fillStyle = bgGrad;
+      g.fillRect(0, 0, 900, 900);
 
-      // Subtle dunes / ground ripples
-      for (let i = 0; i < 4500; i++) {
-        const rx = Math.random() * c.width;
-        const ry = Math.random() * c.height;
-        const rw = 6 + Math.random() * 28;
-        const rh = 2 + Math.random() * 5;
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(235, 220, 195, 0.14)' : 'rgba(35, 48, 52, 0.14)';
-        ctx.fillRect(rx, ry, rw, rh);
+      // Dunes / Sand ripples
+      for (let i = 0; i < 6500; i++) {
+        const x = Math.random() * 900;
+        const y = Math.random() * 900;
+        const r = Math.random() * 6 + 1;
+        g.fillStyle = Math.random() > 0.5 ? 'rgba(60,50,40,0.14)' : 'rgba(245,240,225,0.15)';
+        g.beginPath();
+        g.arc(x, y, r, 0, Math.PI * 2);
+        g.fill();
       }
 
-      // Upper shadow wave
-      ctx.fillStyle = 'rgba(30, 45, 42, 0.38)';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(c.width, 0);
-      ctx.lineTo(c.width, 220);
-      ctx.quadraticCurveTo(620, 190, 280, 60);
-      ctx.closePath();
-      ctx.fill();
+      // Deep shadow under subject
+      g.fillStyle = '#202624';
+      g.beginPath();
+      g.ellipse(470, 520, 220, 95, -0.08, 0, Math.PI * 2);
+      g.fill();
 
-      // Cast shadow beneath subject (deep teal-charcoal shadow)
-      ctx.save();
-      ctx.translate(510, 565);
-      ctx.rotate(-0.08);
-      const shadowGrad = ctx.createRadialGradient(0, 0, 30, 0, 0, 290);
-      shadowGrad.addColorStop(0, 'rgba(15, 32, 34, 0.92)');
-      shadowGrad.addColorStop(0.55, 'rgba(22, 48, 52, 0.65)');
-      shadowGrad.addColorStop(1, 'rgba(22, 48, 52, 0)');
-      ctx.fillStyle = shadowGrad;
-      ctx.beginPath();
-      ctx.ellipse(-35, 30, 300, 155, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      // Warm reddish/orange shell/body
+      const shellGrad = g.createRadialGradient(460, 380, 30, 480, 430, 240);
+      shellGrad.addColorStop(0, '#ff6d24');
+      shellGrad.addColorStop(0.65, '#d64515');
+      shellGrad.addColorStop(1, '#5c2410');
+      g.fillStyle = shellGrad;
+      g.beginPath();
+      g.ellipse(495, 420, 210, 145, 0.12, 0, Math.PI * 2);
+      g.fill();
 
-      // Main curled subject (Vibrant orange-red curled creature / fox-like form)
-      ctx.save();
-      // Tail / left extension
-      const tailGrad = ctx.createLinearGradient(180, 430, 380, 470);
-      tailGrad.addColorStop(0, '#c85a17');
-      tailGrad.addColorStop(1, '#7a2e0e');
-      ctx.fillStyle = tailGrad;
-      ctx.beginPath();
-      ctx.moveTo(390, 445);
-      ctx.quadraticCurveTo(240, 415, 195, 438);
-      ctx.quadraticCurveTo(255, 478, 385, 485);
-      ctx.closePath();
-      ctx.fill();
+      // Highlights on shell
+      g.fillStyle = 'rgba(255, 230, 180, 0.7)';
+      g.beginPath();
+      g.ellipse(435, 455, 38, 18, -0.6, 0, Math.PI * 2);
+      g.fill();
 
-      // Rounded main body dome
-      const bodyGrad = ctx.createRadialGradient(540, 360, 40, 540, 460, 280);
-      bodyGrad.addColorStop(0, '#ff7714');
-      bodyGrad.addColorStop(0.45, '#f2541b');
-      bodyGrad.addColorStop(0.78, '#b82914');
-      bodyGrad.addColorStop(1, '#4c180d');
-      ctx.fillStyle = bodyGrad;
-      ctx.beginPath();
-      ctx.moveTo(345, 480);
-      ctx.bezierCurveTo(355, 300, 535, 255, 675, 295);
-      ctx.bezierCurveTo(800, 335, 865, 435, 825, 525);
-      ctx.bezierCurveTo(790, 595, 690, 610, 625, 595);
-      ctx.bezierCurveTo(535, 575, 425, 575, 345, 480);
-      ctx.closePath();
-      ctx.fill();
-
-      // Sunlit rim highlight along top back and cheek
-      const rimGrad = ctx.createLinearGradient(440, 280, 680, 520);
-      rimGrad.addColorStop(0, 'rgba(255, 238, 170, 0.85)');
-      rimGrad.addColorStop(0.5, 'rgba(255, 160, 60, 0.35)');
-      rimGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = rimGrad;
-      ctx.beginPath();
-      ctx.ellipse(545, 380, 175, 85, -0.25, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Bright white/cream fur patch near center-left
-      ctx.fillStyle = '#fff5dc';
-      ctx.beginPath();
-      ctx.ellipse(490, 470, 45, 24, -0.6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Tucked limbs / claws in foreground
-      ctx.fillStyle = '#9ec4d6';
-      ctx.beginPath();
-      ctx.ellipse(485, 555, 18, 48, 0.25, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-      return c;
+      const img = new Image();
+      img.onload = () => {
+        state.sourceImage = img;
+        renderAll();
+      };
+      img.src = c.toDataURL();
     }
 
-    /********************************************************************
-     * Load Image into Working Buffer
-     ********************************************************************/
-    function setSourceImage(imgElement) {
-      sourceImage = imgElement;
-      const maxWorkDim = 960; // Optimal interactive preview speed & crisp halftone dots
-      const w = imgElement.width || imgElement.naturalWidth;
-      const h = imgElement.height || imgElement.naturalHeight;
-      const scale = Math.min(1, maxWorkDim / Math.max(w, h));
-      workCanvas.width = Math.max(1, Math.round(w * scale));
-      workCanvas.height = Math.max(1, Math.round(h * scale));
-      workCtx.drawImage(imgElement, 0, 0, workCanvas.width, workCanvas.height);
-
-      const badge = document.getElementById('resolutionBadge');
-      if (badge) badge.textContent = `${w}×${h}px`;
-
-      scheduleRender();
-    }
-
-    /********************************************************************
-     * Core Print / Risograph Rendering Pipeline
-     * Can render to previewCanvas (interactive) or any targetCanvas (High-Res Export)
-     ********************************************************************/
-    let renderPending = false;
-    function scheduleRender() {
-      if (renderPending) return;
-      renderPending = true;
-      requestAnimationFrame(() => {
-        renderPending = false;
-        renderPrintEffect(workCanvas, previewCanvas, 1.0);
+    // Build UI Swatches
+    function initSwatches() {
+      INKS.forEach((ink) => {
+        const el = document.createElement('div');
+        el.className = 'swatch-item' + (ink.hatched ? ' hatched' : '');
+        el.style.backgroundColor = ink.hex;
+        el.dataset.id = ink.id;
+        el.title = ink.name;
+        el.addEventListener('click', () => {
+          state.inks[state.activeTabIndex] = ink.id;
+          updateUI();
+          renderMainCanvas();
+        });
+        swatchBar.appendChild(el);
       });
     }
 
-    function getInkById(id) {
-      return RISO_INKS.find(i => i.id === id) || RISO_INKS[0];
-    }
+    // Update UI Tabs & Active States
+    function updateUI() {
+      inkTabsBar.innerHTML = '';
+      state.inks.forEach((inkId, idx) => {
+        const ink = INKS.find(i => i.id === inkId) || INKS[0];
+        const tab = document.createElement('div');
+        tab.className = 'ink-tab' + (idx === state.activeTabIndex ? ' active' : '');
+        tab.innerHTML = `
+          <span class="ink-dot" style="background:${ink.hex}"></span>
+          <span>${ink.name}</span>
+          ${state.inks.length > 1 ? `<span class="tab-close" data-idx="${idx}">&times;</span>` : ''}
+        `;
+        tab.addEventListener('click', (e) => {
+          if (e.target.classList.contains('tab-close')) {
+            const removeIdx = parseInt(e.target.dataset.idx, 10);
+            state.inks.splice(removeIdx, 1);
+            if (state.activeTabIndex >= state.inks.length) {
+              state.activeTabIndex = state.inks.length - 1;
+            }
+            updateUI();
+            renderMainCanvas();
+            return;
+          }
+          state.activeTabIndex = idx;
+          updateUI();
+        });
+        inkTabsBar.appendChild(tab);
+      });
 
-    function getPaperById(id) {
-      return PAPER_STOCKS.find(p => p.id === id) || PAPER_STOCKS[0];
+      if (state.inks.length < 3) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'ink-tab-add';
+        addBtn.textContent = '+';
+        addBtn.title = 'Add Ink Layer (Max 3)';
+        addBtn.addEventListener('click', () => {
+          const unused = INKS.find(i => !state.inks.includes(i.id)) || INKS[0];
+          state.inks.push(unused.id);
+          state.activeTabIndex = state.inks.length - 1;
+          updateUI();
+          renderMainCanvas();
+        });
+        inkTabsBar.appendChild(addBtn);
+      }
+
+      // Highlight active swatch
+      const activeInkId = state.inks[state.activeTabIndex];
+      document.querySelectorAll('.swatch-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === activeInkId);
+      });
+
+      // Paper & Style labels
+      const paper = PAPERS[state.paperIndex];
+      paperDot.style.backgroundColor = paper.hex;
+      lblStyle.textContent = STYLES[state.styleIndex];
+
+      // Sliders sync
+      document.getElementById('rngDotSize').value = state.dotSize;
+      document.getElementById('valDotSize').textContent = state.dotSize;
+      document.getElementById('rngTexture').value = state.texture;
+      document.getElementById('valTexture').textContent = state.texture + '%';
+      document.getElementById('rngContrast').value = state.contrast;
+      document.getElementById('valContrast').textContent = state.contrast;
+      document.getElementById('rngShift').value = state.shift;
+      document.getElementById('valShift').textContent = state.shift + 'px';
+      document.getElementById('rngMargin').value = state.margin;
+      document.getElementById('valMargin').textContent = state.margin + '%';
     }
 
     /**
-     * Evaluates the halftone / screen threshold at coordinates (x, y) for a given plate
+     * Core Riso / Halftone Renderer
      */
-    function sampleScreenPattern(x, y, freq, cosA, sinA, patternMode, roughNoise) {
-      // Rotate coordinates for angled screen (Rosette / Halftone / Crosshatch)
-      const rx = (x * cosA - y * sinA) * freq;
-      const ry = (x * sinA + y * cosA) * freq;
+    function renderRisoToCanvas(targetCanvas, config, workWidth = 900) {
+      if (!state.sourceImage) return;
 
-      if (patternMode === 'grain') {
-        // Stochastic high-frequency riso grain dithering
-        const gx = Math.abs(Math.floor(x * freq * 0.85)) % NOISE_SIZE;
-        const gy = Math.abs(Math.floor(y * freq * 0.85)) % NOISE_SIZE;
-        const n = noiseTable[gy * NOISE_SIZE + gx] + 0.5;
-        return n * 0.75 + (roughNoise + 0.5) * 0.25;
-      }
+      const img = state.sourceImage;
+      const aspect = img.height / img.width;
+      const w = workWidth;
+      const h = Math.round(workWidth * aspect);
 
-      if (patternMode === 'crosshatch') {
-        // Engraved line / crosshatch screen
-        const s1 = Math.sin(rx) * 0.5 + 0.5;
-        const s2 = Math.cos(ry * 0.85) * 0.5 + 0.5;
-        return (s1 * 0.65 + s2 * 0.35);
-      }
+      targetCanvas.width = w;
+      targetCanvas.height = h;
+      const tCtx = targetCanvas.getContext('2d');
 
-      // 'rosette' or 'halftone': Euclidean cosine dot screen
-      const dotWave = (Math.sin(rx) * Math.sin(ry)) * 0.5 + 0.5;
-      return dotWave;
-    }
+      const paper = PAPERS.find(p => p.id === config.paperId) || PAPERS[0];
+      const styleMode = config.styleMode || 'ROSETTE';
+      const dotSize = config.dotSize || 5.5;
+      const contrast = (config.contrast || 115) / 100;
+      const textureAmt = (config.texture ?? 48) / 100;
+      const marginRatio = (config.margin || 0) / 100;
+      const shiftPx = (config.shift ?? 4) * (workWidth / 900);
 
-    /**
-     * Renders the full multi-plate Risograph simulation onto targetCanvas
-     */
-    function renderPrintEffect(srcCanvas, targetCanvas, resolutionScale = 1.0) {
-      const width = srcCanvas.width;
-      const height = srcCanvas.height;
-      targetCanvas.width = width;
-      targetCanvas.height = height;
-      const ctx = targetCanvas.getContext('2d');
+      // 1. Draw Base Paper
+      tCtx.fillStyle = paper.hex;
+      tCtx.fillRect(0, 0, w, h);
 
-      // If Compare button is held down, show original unmodified image
-      if (state.isComparing) {
-        ctx.drawImage(srcCanvas, 0, 0);
-        return;
-      }
+      // Draw image offscreen to read pixels
+      const padX = Math.round(w * marginRatio);
+      const padY = Math.round(h * marginRatio);
+      const innerW = Math.max(10, w - padX * 2);
+      const innerH = Math.max(10, h - padY * 2);
 
-      const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
-      const srcData = srcCtx.getImageData(0, 0, width, height).data;
-      const outImg = ctx.createImageData(width, height);
-      const outData = outImg.data;
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = innerW;
+      srcCanvas.height = innerH;
+      const srcCtx = srcCanvas.getContext('2d');
+      srcCtx.drawImage(img, 0, 0, innerW, innerH);
+      const srcData = srcCtx.getImageData(0, 0, innerW, innerH).data;
 
-      const paper = getPaperById(state.paper);
-      const paperR = paper.rgb[0];
-      const paperG = paper.rgb[1];
-      const paperB = paper.rgb[2];
+      // Prepare Output ImageData
+      const outImgData = tCtx.getImageData(0, 0, w, h);
+      const out = outImgData.data;
 
-      const numPlates = state.plates.length;
-      const activeInks = state.plates.map(id => getInkById(id));
+      const inkObjs = config.inks.map(id => INKS.find(i => i.id === id) || INKS[0]);
+      const angles = [0.26, 1.30, 0.78]; // ~15deg, ~75deg, ~45deg for rosette
 
-      // Scale parameters proportionally when exporting at higher resolution
-      const dotPitch = Math.max(1.8, state.dotSize * resolutionScale);
-      const baseFreq = (Math.PI * 2) / dotPitch;
-      const roughStrength = state.roughness / 100;
-      const contrastFactor = state.contrast / 100;
-      const brightFactor = state.brightness / 100;
-      const inkDensity = state.density / 100;
+      const freq = (Math.PI * 2) / Math.max(2, dotSize * (workWidth / 900));
+      const cornerRadius = marginRatio > 0 ? Math.round(Math.min(innerW, innerH) * 0.03) : 0;
 
-      // Screen angles for authentic multi-plate Rosette moire (15°, 45°, 75°)
-      const anglesDeg = state.pattern === 'halftone' ? [45, 45, 45] : [15, 75, 45];
-      const cosAngles = anglesDeg.map(a => Math.cos((a * Math.PI) / 180));
-      const sinAngles = anglesDeg.map(a => Math.sin((a * Math.PI) / 180));
-
-      // Registration offsets per plate (Plate 0 is anchor, Plate 1 & 2 shift in opposite directions)
-      const offX = Math.round(state.offsetX * resolutionScale);
-      const offY = Math.round(state.offsetY * resolutionScale);
-      const plateOffsets = [
-        { dx: 0, dy: 0 },
-        { dx: offX, dy: offY },
-        { dx: -Math.round(offX * 0.75), dy: Math.round(offY * 0.85) }
-      ];
-
-      // Frame Margin & Rounded Print Block Geometry
-      const marginPxX = Math.round((state.margin / 100) * width);
-      const marginPxY = Math.round((state.margin / 100) * height);
-      const cornerRadius = Math.round(state.corner * resolutionScale * (state.margin > 0 ? 1.5 : 0));
-      const hasMargin = state.margin > 0;
-
-      const minX = marginPxX;
-      const maxX = width - marginPxX;
-      const minY = marginPxY;
-      const maxY = height - marginPxY;
-
-      // Helper to check if point (px, py) is inside the rounded ink block (with rough edge bleed)
-      function isInsidePrintBlock(px, py, edgeJitter) {
-        if (!hasMargin) return true;
-        const jx = px + edgeJitter;
-        const jy = py + edgeJitter;
-        if (jx < minX || jx > maxX || jy < minY || jy > maxY) return false;
-        if (cornerRadius <= 0) return true;
-
-        // Corner distance check
-        let cx = 0, cy = 0;
-        if (jx < minX + cornerRadius && jy < minY + cornerRadius) {
-          cx = minX + cornerRadius - jx;
-          cy = minY + cornerRadius - jy;
-        } else if (jx > maxX - cornerRadius && jy < minY + cornerRadius) {
-          cx = jx - (maxX - cornerRadius);
-          cy = minY + cornerRadius - jy;
-        } else if (jx < minX + cornerRadius && jy > maxY - cornerRadius) {
-          cx = minX + cornerRadius - jx;
-          cy = jy - (maxY - cornerRadius);
-        } else if (jx > maxX - cornerRadius && jy > maxY - cornerRadius) {
-          cx = jx - (maxX - cornerRadius);
-          cy = jy - (maxY - cornerRadius);
+      // Helper for rounded rect mask
+      function insideRoundedRect(x, y, rw, rh, rad) {
+        if (x < 0 || y < 0 || x >= rw || y >= rh) return false;
+        if (rad <= 0) return true;
+        if (x < rad && y < rad) {
+          return (x - rad) ** 2 + (y - rad) ** 2 <= rad * rad;
         }
-        if (cx > 0 && cy > 0) {
-          return (cx * cx + cy * cy) <= (cornerRadius * cornerRadius);
+        if (x > rw - rad && y < rad) {
+          return (x - (rw - rad)) ** 2 + (y - rad) ** 2 <= rad * rad;
+        }
+        if (x < rad && y > rh - rad) {
+          return (x - rad) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
+        }
+        if (x > rw - rad && y > rh - rad) {
+          return (x - (rw - rad)) ** 2 + (y - (rh - rad)) ** 2 <= rad * rad;
         }
         return true;
       }
 
-      /**
-       * Computes ink separation weight [0..1] for a given pixel (r,g,b) and plate index
-       */
-      function computePlateIntensity(r, g, b, plateIdx) {
-        // Apply brightness & contrast
-        let nr = ((r / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
-        let ng = ((g / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
-        let nb = ((b / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
-        nr = nr < 0 ? 0 : nr > 1 ? 1 : nr;
-        ng = ng < 0 ? 0 : ng > 1 ? 1 : ng;
-        nb = nb < 0 ? 0 : nb > 1 ? 1 : nb;
-
-        const luma = 0.299 * nr + 0.587 * ng + 0.114 * nb;
-        const darkness = 1.0 - luma;
-
-        // Warmth (Red/Orange/Yellow bias) vs Coolness (Blue/Cyan/Shadow bias)
-        const warmth = Math.max(0, (nr - nb) * 0.85 + (ng - nb) * 0.25);
-        const redness = Math.max(0, nr - (ng * 0.65 + nb * 0.35));
-
-        if (numPlates === 1) {
-          return Math.min(1, darkness * inkDensity);
-        }
-
-        if (numPlates === 2) {
-          // 2-Color Duotone Separation:
-          // Plate 0 carries warm tones & mid-highlights; Plate 1 carries cool tones & deep shadows
-          if (plateIdx === 0) {
-            const val = warmth * 0.95 + (1.0 - Math.abs(luma - 0.55) * 1.6) * 0.45 + darkness * 0.25;
-            return Math.max(0, Math.min(1, val * inkDensity));
-          } else {
-            const cool = Math.max(0, (nb - nr) * 0.6);
-            const val = Math.pow(darkness, 1.15) * 0.92 + cool * 0.55;
-            return Math.max(0, Math.min(1, val * inkDensity));
-          }
-        }
-
-        // 3-Color Separation (e.g. Yellow + Orange/Pink + Blue/Black like Screenshot 2):
-        if (plateIdx === 0) {
-          // Plate 0 (Highlight / Warm base): strong in warm midtones & highlights
-          const val = warmth * 0.9 + (1.0 - luma) * 0.42 - redness * 0.2;
-          return Math.max(0, Math.min(1, val * inkDensity));
-        } else if (plateIdx === 1) {
-          // Plate 1 (Midtone / Vibrant accent): strong in saturated warm/mid regions
-          const midPeak = Math.max(0, 1.0 - Math.abs(luma - 0.48) * 2.1);
-          const val = redness * 1.15 + warmth * 0.55 + midPeak * 0.48;
-          return Math.max(0, Math.min(1, val * inkDensity));
-        } else {
-          // Plate 2 (Shadow / Cool structure plate): strong in shadows & cool ground textures
-          const coolness = Math.max(0, (1.0 - nr) * 0.55 + (nb - nr * 0.5) * 0.45);
-          const val = Math.pow(darkness, 1.25) * 0.9 + coolness * 0.42;
-          return Math.max(0, Math.min(1, val * inkDensity));
-        }
+      // Deterministic hash noise for authentic grain & textile weave
+      function hashNoise(x, y) {
+        const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        return n - Math.floor(n);
       }
 
-      // Pixel Loop
-      for (let y = 0; y < height; y++) {
-        const ny = y % NOISE_SIZE;
-        const rowOffset = y * width;
+      // 2. Process Layers & Screen Pattern
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const outIdx = (y * w + x) * 4;
 
-        for (let x = 0; x < width; x++) {
-          const nx = x % NOISE_SIZE;
-          const nIdx = ny * NOISE_SIZE + nx;
-          const grainVal = noiseTable[nIdx];
-          const fiberVal = fiberTable[nIdx];
+          // Base paper color + woven fabric/kraft grain
+          const weave = (Math.sin(x * 1.4) + Math.cos(y * 1.4)) * 0.5;
+          const fineGrain = (hashNoise(x, y) - 0.5) * 2;
+          const fiberDelta = (weave * 7 + fineGrain * 18) * textureAmt;
 
-          // Start with Paper Base + subtle paper fiber grain
-          const paperGrainShift = fiberVal * (14 + roughStrength * 24);
-          let curR = paperR + paperGrainShift;
-          let curG = paperG + paperGrainShift;
-          let curB = paperB + paperGrainShift;
+          let pr = paper.r + fiberDelta;
+          let pg = paper.g + fiberDelta;
+          let pb = paper.b + fiberDelta;
 
-          // Edge jitter for rough screenprint frame border
-          const edgeJitter = grainVal * roughStrength * 6.5 * resolutionScale;
-
-          // Loop through each active ink plate
-          for (let p = 0; p < numPlates; p++) {
-            const off = plateOffsets[p];
-            const sx = x - off.dx;
-            const sy = y - off.dy;
-
-            // Check if this plate's shifted coordinate falls inside the print block
-            if (!isInsidePrintBlock(sx, sy, edgeJitter)) continue;
-
-            // Clamp sample coordinates to image bounds
-            const csx = sx < 0 ? 0 : sx >= width ? width - 1 : sx;
-            const csy = sy < 0 ? 0 : sy >= height ? height - 1 : sy;
-            const srcIdx = (csy * width + csx) * 4;
-
-            const sr = srcData[srcIdx];
-            const sg = srcData[srcIdx + 1];
-            const sb = srcData[srcIdx + 2];
-
-            let inkTarget = computePlateIntensity(sr, sg, sb, p);
-
-            // Modulate ink target with paper fiber & roughness (ink skipping on rough paper valleys)
-            inkTarget += (grainVal * 0.45 + fiberVal * 0.35) * roughStrength;
-
-            if (inkTarget <= 0.04) continue;
-
-            // Evaluate halftone / rosette / stochastic screen at shifted plate coordinate
-            const screenThreshold = sampleScreenPattern(
-              sx,
-              sy,
-              baseFreq,
-              cosAngles[p],
-              sinAngles[p],
-              state.pattern,
-              grainVal
-            );
-
-            // Soft anti-aliased halftone dot edge with organic ink bleed
-            const edgeSoftness = 0.22 + roughStrength * 0.18;
-            let dotCoverage = (inkTarget - screenThreshold * 0.82) / edgeSoftness;
-            if (dotCoverage <= 0) continue;
-            if (dotCoverage > 1) dotCoverage = 1;
-
-            // Slight ink starvation inside heavy solids (authentic Riso drum texture)
-            const drumTexture = 1.0 - Math.max(0, -fiberVal * roughStrength * 0.42);
-            const alpha = dotCoverage * drumTexture * 0.92;
-
-            // Realistic translucent Risograph ink multiply-blend onto current paper/ink layer
-            const ink = activeInks[p].rgb;
-            const blendR = (curR * ink[0]) / 255;
-            const blendG = (curG * ink[1]) / 255;
-            const blendB = (curB * ink[2]) / 255;
-
-            // Mix between pure colour replacement and subtractive multiply so light inks (like Yellow) stay vibrant
-            const inkLuma = (ink[0] * 0.299 + ink[1] * 0.587 + ink[2] * 0.114) / 255;
-            const mixMode = 0.45 + (1 - inkLuma) * 0.45;
-            const targetR = blendR * mixMode + ink[0] * (1 - mixMode);
-            const targetG = blendG * mixMode + ink[1] * (1 - mixMode);
-            const targetB = blendB * mixMode + ink[2] * (1 - mixMode);
-
-            curR = curR + (targetR - curR) * alpha;
-            curG = curG + (targetG - curG) * alpha;
-            curB = curB + (targetB - curB) * alpha;
+          if (paper.darkFiber && fineGrain > 0.65) {
+            pr -= 18 * textureAmt;
+            pg -= 18 * textureAmt;
+            pb -= 18 * textureAmt;
           }
 
-          const outIdx = (rowOffset + x) * 4;
-          outData[outIdx]     = curR < 0 ? 0 : curR > 255 ? 255 : curR;
-          outData[outIdx + 1] = curG < 0 ? 0 : curG > 255 ? 255 : curG;
-          outData[outIdx + 2] = curB < 0 ? 0 : curB > 255 ? 255 : curB;
-          outData[outIdx + 3] = 255;
-        }
-      }
+          // Accumulate each ink layer using Subtractive / Multiply Riso blending
+          for (let k = 0; k < inkObjs.length; k++) {
+            const ink = inkObjs[k];
+            const shiftX = k === 0 ? 0 : (k === 1 ? shiftPx : -shiftPx * 0.7);
+            const shiftY = k === 0 ? 0 : (k === 1 ? shiftPx * 0.6 : shiftPx);
 
-      ctx.putImageData(outImg, 0, 0);
-    }
+            const sx = Math.round(x - padX - shiftX);
+            const sy = Math.round(y - padY - shiftY);
 
-    /********************************************************************
-     * UI Rendering & Event Bindings
-     ********************************************************************/
-    function renderInkTabs() {
-      const container = document.getElementById('inkTabsContainer');
-      container.innerHTML = '';
+            if (!insideRoundedRect(sx, sy, innerW, innerH, cornerRadius)) continue;
 
-      state.plates.forEach((inkId, idx) => {
-        const ink = getInkById(inkId);
-        const isActive = idx === state.activePlateIndex;
+            const pIdx = (sy * innerW + sx) * 4;
+            const r = srcData[pIdx] / 255;
+            const g = srcData[pIdx + 1] / 255;
+            const b = srcData[pIdx + 2] / 255;
 
-        const tab = document.createElement('div');
-        tab.className = `flex items-center gap-2 px-3.5 py-2.5 border-r border-[#262626] cursor-pointer text-xs tracking-wider transition-colors ${
-          isActive
-            ? 'bg-[#1c1c1c] text-white font-semibold border-t-2 border-t-neutral-300'
-            : 'bg-[#111111] text-neutral-400 hover:bg-[#161616] hover:text-neutral-200'
-        }`;
+            // Calculate channel separation density based on number of inks
+            let density = 0;
+            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+            const cLuma = Math.min(1, Math.max(0, (luma - 0.5) * contrast + 0.5));
 
-        // Color indicator square
-        const swatchBox = document.createElement('span');
-        swatchBox.className = 'w-3 h-3 rounded-xs shrink-0 border border-black/40';
-        swatchBox.style.backgroundColor = ink.hex;
-
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = ink.id.toUpperCase();
-
-        tab.appendChild(swatchBox);
-        tab.appendChild(nameSpan);
-
-        // Remove plate button '×' (if more than 1 plate exists)
-        if (state.plates.length > 1) {
-          const removeBtn = document.createElement('button');
-          removeBtn.className = 'ml-1.5 text-neutral-500 hover:text-white px-1';
-          removeBtn.textContent = '✕';
-          removeBtn.title = 'このインク版を削除';
-          removeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            state.plates.splice(idx, 1);
-            if (state.activePlateIndex >= state.plates.length) {
-              state.activePlateIndex = state.plates.length - 1;
+            if (inkObjs.length === 1) {
+              density = 1 - cLuma;
+            } else if (inkObjs.length === 2) {
+              if (k === 0) {
+                // Warm / Highlight-midtone plate
+                const warmDiff = Math.max(0, r - b * 0.65);
+                density = Math.min(1, warmDiff * 1.35 + (1 - cLuma) * 0.45);
+              } else {
+                // Shadow / Cool plate
+                density = Math.pow(1 - cLuma, 1.15);
+              }
+            } else {
+              if (k === 0) {
+                // Plate 1 (e.g. Yellow / Warm)
+                density = Math.min(1, Math.max(0, (r + g * 0.5 - b) * 0.9));
+              } else if (k === 1) {
+                // Plate 2 (e.g. Orange / Pink / Red)
+                density = Math.min(1, Math.max(0, (r - g * 0.35) * 1.25 + (1 - cLuma) * 0.25));
+              } else {
+                // Plate 3 (e.g. Blue / Black / Shadow)
+                density = Math.pow(1 - cLuma, 1.25);
+              }
             }
-            updateUIFromState();
-            scheduleRender();
-          });
-          tab.appendChild(removeBtn);
+
+            // Screen modulation (Rosette / Halftone / Grain / Hatch)
+            const ang = angles[k % 3];
+            const rx = x * Math.cos(ang) - y * Math.sin(ang);
+            const ry = x * Math.sin(ang) + y * Math.cos(ang);
+
+            let threshold = 0.5;
+            if (styleMode === 'ROSETTE') {
+              const s = (Math.sin(rx * freq) + Math.cos(ry * freq)) * 0.25 + 0.5;
+              threshold = s * 0.82 + fineGrain * 0.09;
+            } else if (styleMode === 'HALFTONE') {
+              threshold = (Math.sin(rx * freq) * Math.sin(ry * freq)) * 0.45 + 0.5;
+            } else if (styleMode === 'GRAIN') {
+              threshold = hashNoise(x + k * 71, y + k * 43) * 0.88 + 0.06;
+            } else if (styleMode === 'HATCH') {
+              threshold = (Math.sin(rx * freq * 1.25) * 0.45 + 0.5) * 0.85 + fineGrain * 0.08;
+            }
+
+            // Soft ink bleed edge
+            const inkAlpha = Math.min(1, Math.max(0, (density - threshold + 0.14) * 3.6));
+
+            if (inkAlpha > 0.01) {
+              // Riso ink translucent multiply + vibrant pigment mix
+              const strength = 0.86 * inkAlpha;
+              const multR = (pr * ink.r) / 255;
+              const multG = (pg * ink.g) / 255;
+              const multB = (pb * ink.b) / 255;
+
+              const targetR = multR * 0.55 + ink.r * 0.45;
+              const targetG = multG * 0.55 + ink.g * 0.45;
+              const targetB = multB * 0.55 + ink.b * 0.45;
+
+              pr = pr * (1 - strength) + targetR * strength;
+              pg = pg * (1 - strength) + targetG * strength;
+              pb = pb * (1 - strength) + targetB * strength;
+            }
+          }
+
+          out[outIdx]     = Math.min(255, Math.max(0, pr));
+          out[outIdx + 1] = Math.min(255, Math.max(0, pg));
+          out[outIdx + 2] = Math.min(255, Math.max(0, pb));
+          out[outIdx + 3] = 255;
         }
-
-        tab.addEventListener('click', () => {
-          state.activePlateIndex = idx;
-          updateUIFromState();
-        });
-
-        container.appendChild(tab);
-      });
-
-      // Add '+' button if fewer than 3 plates (Matches Screenshot 3: [+])
-      if (state.plates.length < 3) {
-        const addBtn = document.createElement('button');
-        addBtn.className = 'px-4 py-2.5 text-neutral-400 hover:text-white hover:bg-[#1a1a1a] border-r border-[#262626] text-sm font-bold';
-        addBtn.textContent = '+';
-        addBtn.title = 'インク版を追加 (最大3色刷り)';
-        addBtn.addEventListener('click', () => {
-          // Pick an unused ink color
-          const unused = RISO_INKS.find(i => !state.plates.includes(i.id)) || RISO_INKS[1];
-          state.plates.push(unused.id);
-          state.activePlateIndex = state.plates.length - 1;
-          updateUIFromState();
-          scheduleRender();
-        });
-        container.appendChild(addBtn);
       }
+
+      tCtx.putImageData(outImgData, 0, 0);
     }
 
-    function renderInkSwatches() {
-      const container = document.getElementById('swatchContainer');
-      const autoBtn = document.getElementById('autoDistributeBtn');
-      container.innerHTML = '';
-      container.appendChild(autoBtn);
-
-      const currentInkId = state.plates[state.activePlateIndex];
-      const activeInkObj = getInkById(currentInkId);
-
-      document.getElementById('activePlateLabel').textContent = `PLATE ${state.activePlateIndex + 1} INK COLOR`;
-      document.getElementById('activeInkName').textContent = activeInkObj.name;
-
-      RISO_INKS.forEach(ink => {
-        const btn = document.createElement('button');
-        const isSelected = ink.id === currentInkId;
-        btn.className = `w-9 h-9 shrink-0 rounded-xs transition-transform ${
-          ink.hatched ? 'swatch-hatch' : ''
-        } ${
-          isSelected
-            ? 'ring-2 ring-white scale-105 z-10'
-            : 'border border-black/50 opacity-90 hover:opacity-100'
-        }`;
-        btn.style.backgroundColor = ink.hex;
-        btn.title = ink.name;
-
-        btn.addEventListener('click', () => {
-          state.plates[state.activePlateIndex] = ink.id;
-          state.presetName = state.plates.map(p => p.toUpperCase()).join(' + ');
-          updateUIFromState();
-          scheduleRender();
-        });
-
-        container.appendChild(btn);
-      });
+    function getCurrentConfig() {
+      return {
+        inks: [...state.inks],
+        paperId: PAPERS[state.paperIndex].id,
+        styleMode: STYLES[state.styleIndex],
+        dotSize: state.dotSize,
+        texture: state.texture,
+        contrast: state.contrast,
+        shift: state.shift,
+        margin: state.margin
+      };
     }
 
-    function renderPaperSwatches() {
-      const container = document.getElementById('paperSwatches');
-      container.innerHTML = '';
-
-      PAPER_STOCKS.forEach(p => {
-        const isSelected = p.id === state.paper;
-        const btn = document.createElement('button');
-        btn.className = `h-9 flex-1 rounded-xs transition-all flex items-center justify-center text-[10px] font-bold ${
-          isSelected ? 'ring-2 ring-white scale-105' : 'border border-neutral-600 opacity-80 hover:opacity-100'
-        }`;
-        btn.style.backgroundColor = p.hex;
-        btn.style.color = '#222';
-        btn.textContent = p.id.toUpperCase();
-        btn.addEventListener('click', () => {
-          state.paper = p.id;
-          updateUIFromState();
-          scheduleRender();
-        });
-        container.appendChild(btn);
-      });
+    function renderMainCanvas() {
+      renderRisoToCanvas(mainCanvas, getCurrentConfig(), 880);
     }
 
-    function updateUIFromState() {
-      renderInkTabs();
-      renderInkSwatches();
-      renderPaperSwatches();
-
-      const paperObj = getPaperById(state.paper);
-      document.getElementById('paperIndicatorBox').style.backgroundColor = paperObj.hex;
-      document.getElementById('paperNameLabel').textContent = paperObj.name;
-
-      document.getElementById('patternModeSelect').value = state.pattern;
-      document.getElementById('sliderDotSize').value = state.dotSize;
-      document.getElementById('valDotSize').textContent = `${state.dotSize}px`;
-
-      document.getElementById('sliderRoughness').value = state.roughness;
-      document.getElementById('valRoughness').textContent = `${state.roughness}%`;
-
-      document.getElementById('sliderOffsetX').value = state.offsetX;
-      document.getElementById('valOffsetX').textContent = `${state.offsetX}px`;
-
-      document.getElementById('sliderOffsetY').value = state.offsetY;
-      document.getElementById('valOffsetY').textContent = `${state.offsetY}px`;
-
-      document.getElementById('sliderMargin').value = state.margin;
-      document.getElementById('valMargin').textContent = `${state.margin}%`;
-
-      document.getElementById('sliderCorner').value = state.corner;
-      document.getElementById('valCorner').textContent = `${state.corner}px`;
-
-      document.getElementById('sliderContrast').value = state.contrast;
-      document.getElementById('valContrast').textContent = `${state.contrast}%`;
-
-      document.getElementById('sliderBrightness').value = state.brightness;
-      document.getElementById('valBrightness').textContent = `${state.brightness}%`;
-
-      document.getElementById('sliderDensity').value = state.density;
-      document.getElementById('valDensity').textContent = `${state.density}%`;
-
-      document.getElementById('statusBadge').textContent = `INK: ${state.plates.map(p => p.toUpperCase()).join(' + ')} | ${state.pattern.toUpperCase()}`;
-
-      // Bottom tab visibility
-      document.getElementById('panelGrain').classList.toggle('hidden', state.activeBottomTab !== 'grain');
-      document.getElementById('panelPaper').classList.toggle('hidden', state.activeBottomTab !== 'paper');
-      document.getElementById('panelTone').classList.toggle('hidden', state.activeBottomTab !== 'tone');
-
-      document.getElementById('tabGrainBtn').classList.toggle('active-mode', state.activeBottomTab === 'grain');
-      document.getElementById('tabPaperBtn').classList.toggle('active-mode', state.activeBottomTab === 'paper');
-      document.getElementById('tabToneBtn').classList.toggle('active-mode', state.activeBottomTab === 'tone');
+    function renderAll() {
+      updateUI();
+      renderMainCanvas();
     }
 
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.remove('opacity-0');
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => {
-        t.classList.add('opacity-0');
-      }, 1800);
-    }
-
-    /********************************************************************
-     * Preset Grid Modal (Renders Live Miniature Cards like Screenshot 1)
-     ********************************************************************/
-    function renderPresetGallery() {
+    // Preset Grid Renderer
+    function renderPresetGrid() {
       const grid = document.getElementById('presetGrid');
       grid.innerHTML = '';
 
-      // Create a small thumbnail source canvas for rapid preview generation
-      const thumbSrc = document.createElement('canvas');
-      thumbSrc.width = 220;
-      thumbSrc.height = 155;
-      const tCtx = thumbSrc.getContext('2d');
-      tCtx.drawImage(sourceImage, 0, 0, thumbSrc.width, thumbSrc.height);
-
-      const allPresets = [... state.customPresets, ...BUILTIN_PRESETS];
-
-      // Save current state temporarily while rendering thumbnails
-      const backupState = JSON.parse(JSON.stringify(state));
-
-      allPresets.forEach((preset, index) => {
+      state.presets.forEach((p) => {
         const card = document.createElement('div');
-        card.className = 'group cursor-pointer flex flex-col gap-2';
+        card.className = 'preset-card';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'preset-thumb-wrap';
 
         const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.className = 'w-full aspect-[4/3] object-cover rounded-xs border border-[#2d2d2d] group-hover:border-white transition-colors shadow-md';
+        thumbCanvas.className = 'preset-thumb-canvas';
+        wrap.appendChild(thumbCanvas);
 
-        // Temporarily apply preset parameters
-        state.plates = [...preset.plates];
-        state.paper = preset.paper || 'cream';
-        state.pattern = preset.pattern || 'rosette';
-        state.dotSize = preset.dotSize || 4.5;
-        state.roughness = preset.roughness ?? 45;
-        state.offsetX = preset.offsetX ?? 4;
-        state.offsetY = preset.offsetY ?? -3;
-        state.margin = preset.margin !== undefined ? preset.margin : 12;
-        state.corner = preset.corner !== undefined ? preset.corner : 10;
-        state.isComparing = false;
+        const title = document.createElement('div');
+        title.className = 'preset-title';
+        title.textContent = p.title;
 
-        renderPrintEffect(thumbSrc, thumbCanvas, 0.35);
+        card.appendChild(wrap);
+        card.appendChild(title);
+        grid.appendChild(card);
 
-        const labelRow = document.createElement('div');
-        labelRow.className = 'flex items-center justify-between text-xs text-neutral-300 group-hover:text-white tracking-wide px-0.5';
-
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = preset.name;
-        labelRow.appendChild(titleSpan);
-
-        if (preset.isCustom) {
-          const delBtn = document.createElement('button');
-          delBtn.textContent = '✕';
-          delBtn.className = 'text-neutral-500 hover:text-red-400 px-1';
-          delBtn.title = 'カスタムプリセットを削除';
-          delBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            state.customPresets.splice(index, 1);
-            try {
-              localStorage.setItem('risoprint_custom_presets', JSON.stringify(state.customPresets));
-            } catch (err) {}
-            renderPresetGallery();
-          });
-          labelRow.appendChild(delBtn);
-        }
-
-        card.appendChild(thumbCanvas);
-        card.appendChild(labelRow);
+        // Render thumbnail
+        setTimeout(() => {
+          renderRisoToCanvas(thumbCanvas, {
+            inks: p.inks,
+            paperId: p.paper,
+            styleMode: p.style,
+            dotSize: 5.5,
+            texture: 48,
+            contrast: 115,
+            shift: p.shift ?? 4,
+            margin: p.margin ?? 14
+          }, 260);
+        }, 10);
 
         card.addEventListener('click', () => {
-          Object.assign(state, backupState);
-          state.plates = [...preset.plates];
-          state.activePlateIndex = 0;
-          state.paper = preset.paper || 'cream';
-          state.pattern = preset.pattern || 'rosette';
-          state.dotSize = preset.dotSize || 4.5;
-          state.roughness = preset.roughness ?? 45;
-          state.offsetX = preset.offsetX ?? 4;
-          state.offsetY = preset.offsetY ?? -3;
-          state.margin = preset.margin !== undefined ? preset.margin : 0;
-          state.corner = preset.corner !== undefined ? preset.corner : 12;
-          state.presetName = preset.name;
+          state.inks = [...p.inks];
+          state.activeTabIndex = 0;
+          const pIdx = PAPERS.findIndex(item => item.id === p.paper);
+          if (pIdx !== -1) state.paperIndex = pIdx;
+          const sIdx = STYLES.indexOf(p.style);
+          if (sIdx !== -1) state.styleIndex = sIdx;
+          state.margin = p.margin ?? 14;
+          state.shift = p.shift ?? 4;
 
-          document.getElementById('presetModal').classList.add('hidden');
-          document.getElementById('presetModal').classList.remove('flex');
-          updateUIFromState();
-          scheduleRender();
-          showToast(`PRESET: ${preset.name}`);
+          document.getElementById('presetModal').classList.remove('open');
+          renderAll();
         });
-
-        grid.appendChild(card);
-      });
-
-      // Restore active state
-      Object.assign(state, backupState);
-    }
-
-    /********************************************************************
-     * Event Listeners Setup
-     ********************************************************************/
-    function setupEvents() {
-      // File Input
-      const imageInput = document.getElementById('imageInput');
-      imageInput.addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        loadFileToImage(file);
-        imageInput.value = '';
-      });
-
-      // Drag and drop image support
-      const dropZone = document.getElementById('dropZone');
-      const dropOverlay = document.getElementById('dropOverlay');
-      window.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropOverlay.classList.remove('opacity-0');
-      });
-      window.addEventListener('dragleave', (e) => {
-        if (e.relatedTarget === null) {
-          dropOverlay.classList.add('opacity-0');
-        }
-      });
-      window.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropOverlay.classList.add('opacity-0');
-        const file = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-          loadFileToImage(file);
-        }
-      });
-
-      // Reset to built-in sample image
-      document.getElementById('resetSampleBtn').addEventListener('click', () => {
-        setSourceImage(createSampleCanvas());
-        showToast('SAMPLE IMAGE RESTORED');
-      });
-
-      // Hold / Toggle Compare Button
-      const compareBtn = document.getElementById('compareBtn');
-      const startCompare = () => {
-        state.isComparing = true;
-        compareBtn.classList.add('active-mode');
-        scheduleRender();
-      };
-      const endCompare = () => {
-        if (!state.isComparing) return;
-        state.isComparing = false;
-        compareBtn.classList.remove('active-mode');
-        scheduleRender();
-      };
-      compareBtn.addEventListener('mousedown', startCompare);
-      window.addEventListener('mouseup', endCompare);
-      compareBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCompare(); });
-      window.addEventListener('touchend', endCompare);
-
-      // Auto Button [A]: Reverse / Rotate ink plate order
-      document.getElementById('autoDistributeBtn').addEventListener('click', () => {
-        state.plates.push(state.plates.shift());
-        updateUIFromState();
-        scheduleRender();
-        showToast('INK CHANNELS ROTATED');
-      });
-
-      // 🎲 RANDOM Button: Randomize inks & subtle misregistration
-      document.getElementById('diceRandomBtn').addEventListener('click', () => {
-        const count = Math.random() > 0.38 ? 3 : 2;
-        const shuffled = [...RISO_INKS].sort(() => Math.random() - 0.5);
-        state.plates = shuffled.slice(0, count).map(i => i.id);
-        state.activePlateIndex = 0;
-        state.offsetX = Math.floor(Math.random() * 14) - 7;
-        state.offsetY = Math.floor(Math.random() * 14) - 7;
-        updateUIFromState();
-        scheduleRender();
-        showToast(`RANDOM: ${state.plates.map(p => p.toUpperCase()).join(' + ')}`);
-      });
-
-      // 🎲 STYLE Button: Cycle screen pattern & dot scale
-      const patterns = ['rosette', 'halftone', 'grain', 'crosshatch'];
-      document.getElementById('diceStyleBtn').addEventListener('click', () => {
-        const nextIdx = (patterns.indexOf(state.pattern) + 1) % patterns.length;
-        state.pattern = patterns[nextIdx];
-        state.dotSize = [3.5, 4.5, 5.5, 6.5][Math.floor(Math.random() * 4)];
-        updateUIFromState();
-        scheduleRender();
-        showToast(`STYLE: ${state.pattern.toUpperCase()} (${state.dotSize}px)`);
-      });
-
-      // 🎲 FRAME Button: Cycle frame margin & paper stock
-      const margins = [0, 8, 12, 16];
-      document.getElementById('diceFrameBtn').addEventListener('click', () => {
-        const curIdx = margins.indexOf(state.margin);
-        state.margin = margins[(curIdx + 1) % margins.length];
-        state.corner = state.margin > 0 ? 12 : 0;
-        updateUIFromState();
-        scheduleRender();
-        showToast(state.margin > 0 ? `FRAME MARGIN: ${state.margin}%` : 'FULL BLEED (NO MARGIN)');
-      });
-
-      // Sliders & Selects
-      document.getElementById('patternModeSelect').addEventListener('change', (e) => {
-        state.pattern = e.target.value;
-        updateUIFromState();
-        scheduleRender();
-      });
-
-      const bindSlider = (id, key) => {
-        const el = document.getElementById(id);
-        el.addEventListener('input', (e) => {
-          state[key] = parseFloat(e.target.value);
-          updateUIFromState();
-          scheduleRender();
-        });
-      };
-
-      bindSlider('sliderDotSize', 'dotSize');
-      bindSlider('sliderRoughness', 'roughness');
-      bindSlider('sliderOffsetX', 'offsetX');
-      bindSlider('sliderOffsetY', 'offsetY');
-      bindSlider('sliderMargin', 'margin');
-      bindSlider('sliderCorner', 'corner');
-      bindSlider('sliderContrast', 'contrast');
-      bindSlider('sliderBrightness', 'brightness');
-      bindSlider('sliderDensity', 'density');
-
-      document.getElementById('resetToneBtn').addEventListener('click', () => {
-        state.contrast = 115;
-        state.brightness = 100;
-        state.density = 92;
-        updateUIFromState();
-        scheduleRender();
-      });
-
-      // Bottom Mode Tabs (GRAIN / PAPER / TONE)
-      document.getElementById('tabGrainBtn').addEventListener('click', () => {
-        state.activeBottomTab = 'grain';
-        updateUIFromState();
-      });
-      document.getElementById('tabPaperBtn').addEventListener('click', () => {
-        state.activeBottomTab = 'paper';
-        updateUIFromState();
-      });
-      document.getElementById('tabToneBtn').addEventListener('click', () => {
-        state.activeBottomTab = 'tone';
-        updateUIFromState();
-      });
-
-      // Preset Modal Open / Close / Save
-      document.getElementById('openPresetBtn').addEventListener('click', () => {
-        renderPresetGallery();
-        const modal = document.getElementById('presetModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      });
-
-      document.getElementById('closePresetBtn').addEventListener('click', () => {
-        const modal = document.getElementById('presetModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      });
-
-      document.getElementById('saveCustomPresetBtn').addEventListener('click', () => {
-        const customName = `${state.plates.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ')} (${state.pattern})`;
-        const newPreset = {
-          name: customName,
-          plates: [...state.plates],
-          paper: state.paper,
-          pattern: state.pattern,
-          dotSize: state.dotSize,
-          roughness: state.roughness,
-          offsetX: state.offsetX,
-          offsetY: state.offsetY,
-          margin: state.margin,
-          corner: state.corner,
-          isCustom: true
-        };
-        state.customPresets.unshift(newPreset);
-        try {
-          localStorage.setItem('risoprint_custom_presets', JSON.stringify(state.customPresets));
-        } catch (err) {}
-        renderPresetGallery();
-        showToast('☆ PRESET SAVED');
-      });
-
-      // Settings & High-Res Export
-      const settingsModal = document.getElementById('settingsModal');
-      document.getElementById('settingsBtn').addEventListener('click', () => {
-        settingsModal.classList.remove('hidden');
-        settingsModal.classList.add('flex');
-      });
-      document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-        settingsModal.classList.add('hidden');
-        settingsModal.classList.remove('flex');
-      });
-      document.getElementById('confirmExportBtn').addEventListener('click', () => {
-        settingsModal.classList.add('hidden');
-        settingsModal.classList.remove('flex');
-        triggerHighResExport();
-      });
-      document.getElementById('exportBtn').addEventListener('click', () => {
-        triggerHighResExport();
       });
     }
 
-    function loadFileToImage(file) {
+    /**************************************************************
+     * PWA Icon Generator (192x192 & 512x512 PNG)
+     **************************************************************/
+    function downloadPWAIcon(size) {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const g = c.getContext('2d');
+      const s = size / 512;
+
+      // Dark matte card background
+      g.fillStyle = '#121212';
+      g.fillRect(0, 0, size, size);
+
+      // Inner frame
+      g.fillStyle = '#1c1c1c';
+      g.strokeStyle = '#333333';
+      g.lineWidth = 8 * s;
+      const pad = 42 * s;
+      const w = size - pad * 2;
+      g.beginPath();
+      g.roundRect(pad, pad, w, w, 84 * s);
+      g.fill();
+      g.stroke();
+
+      // Riso overlapping halftone circles (Pink, Blue, Yellow)
+      g.globalCompositeOperation = 'screen';
+
+      g.fillStyle = '#ff48b0';
+      g.beginPath();
+      g.arc(215 * s, 235 * s, 105 * s, 0, Math.PI * 2);
+      g.fill();
+
+      g.fillStyle = '#0078bf';
+      g.beginPath();
+      g.arc(298 * s, 278 * s, 105 * s, 0, Math.PI * 2);
+      g.fill();
+
+      g.fillStyle = '#ffe800';
+      g.beginPath();
+      g.arc(256 * s, 200 * s, 72 * s, 0, Math.PI * 2);
+      g.fill();
+
+      g.globalCompositeOperation = 'source-over';
+
+      // Subtle grain overlay on icon
+      const imgData = g.getImageData(0, 0, size, size);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 18;
+        d[i]     = Math.min(255, Math.max(0, d[i] + noise));
+        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + noise));
+        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + noise));
+      }
+      g.putImageData(imgData, 0, 0);
+
+      c.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    }
+
+    /**************************************************************
+     * Event Listeners
+     **************************************************************/
+    document.getElementById('btnUpload').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
         img.onload = () => {
-          setSourceImage(img);
-          showToast('IMAGE LOADED');
+          state.sourceImage = img;
+          renderMainCanvas();
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
-    }
+    });
 
-    /********************************************************************
-     * High-Resolution Export Pipeline (Supports up to 24MP / 6000x4000px)
-     ********************************************************************/
-    function triggerHighResExport() {
-      if (!sourceImage) return;
-      const indicator = document.getElementById('processingIndicator');
-      indicator.classList.remove('hidden');
-      showToast('RENDERING HIGH-RES PRINT...');
+    document.getElementById('btnQuickInvert').addEventListener('click', () => {
+      state.inks.reverse();
+      renderAll();
+    });
 
-      setTimeout(() => {
-        try {
-          const scaleOption = document.querySelector('input[name="exportScale"]:checked')?.value || 'original';
-          const format = document.getElementById('exportFormatSelect')?.value || 'image/jpeg';
+    document.getElementById('btnAutoBalance').addEventListener('click', () => {
+      state.dotSize = 5.5;
+      state.texture = 48;
+      state.contrast = 115;
+      state.shift = 4;
+      renderAll();
+    });
 
-          const origW = sourceImage.width || sourceImage.naturalWidth;
-          const origH = sourceImage.height || sourceImage.naturalHeight;
+    document.getElementById('btnRandom').addEventListener('click', () => {
+      const count = Math.random() > 0.38 ? 2 : 3;
+      const shuffled = [...INKS].sort(() => 0.5 - Math.random());
+      state.inks = shuffled.slice(0, count).map(i => i.id);
+      state.activeTabIndex = 0;
+      state.paperIndex = Math.floor(Math.random() * PAPERS.length);
+      state.styleIndex = Math.floor(Math.random() * STYLES.length);
+      renderAll();
+    });
 
-          // Cap max dimension at 6000px (24MP class) or 2048px for SNS
-          const maxTargetDim = scaleOption === 'sns' ? 2048 : 6000;
-          const exportRatio = Math.min(1, maxTargetDim / Math.max(origW, origH));
-          const expW = Math.max(1, Math.round(origW * exportRatio));
-          const expH = Math.max(1, Math.round(origH * exportRatio));
+    document.getElementById('btnStyle').addEventListener('click', () => {
+      state.styleIndex = (state.styleIndex + 1) % STYLES.length;
+      renderAll();
+    });
 
-          const offSrc = document.createElement('canvas');
-          offSrc.width = expW;
-          offSrc.height = expH;
-          offSrc.getContext('2d').drawImage(sourceImage, 0, 0, expW, expH);
+    document.getElementById('btnFrame').addEventListener('click', () => {
+      const margins = [0, 10, 15, 20];
+      const nextIdx = (margins.indexOf(state.margin) + 1) % margins.length;
+      state.margin = margins[nextIdx];
+      renderAll();
+    });
 
-          const offOut = document.createElement('canvas');
-          const resScaleFactor = Math.max(expW, expH) / Math.max(workCanvas.width, workCanvas.height);
+    document.getElementById('btnGrainToggle').addEventListener('click', () => {
+      state.texture = state.texture > 10 ? 0 : 55;
+      renderAll();
+    });
 
-          renderPrintEffect(offSrc, offOut, resScaleFactor);
+    document.getElementById('btnPaperCycle').addEventListener('click', () => {
+      state.paperIndex = (state.paperIndex + 1) % PAPERS.length;
+      renderAll();
+    });
 
-          const ext = format === 'image/png' ? 'png' : 'jpg';
-          offOut.toBlob((blob) => {
-            indicator.classList.add('hidden');
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `RisoPrint_${state.plates.join('-')}_${Date.now()}.${ext}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast(`EXPORTED (${expW}×${expH}px)`);
-          }, format, 0.95);
-        } catch (err) {
-          console.error(err);
-          indicator.classList.add('hidden');
-          showToast('EXPORT ERROR');
-        }
-      }, 60);
-    }
+    const toggleDrawer = () => drawerPanel.classList.toggle('open');
+    document.getElementById('btnToneDrawer').addEventListener('click', toggleDrawer);
+    document.getElementById('btnSettings').addEventListener('click', toggleDrawer);
 
-    // Initialize App on Load
-    window.onload = function () {
-      setupEvents();
-      setSourceImage(createSampleCanvas());
-      updateUIFromState();
+    // Sliders
+    const bindSlider = (id, key) => {
+      document.getElementById(id).addEventListener('input', (e) => {
+        state[key] = parseFloat(e.target.value);
+        updateUI();
+        renderMainCanvas();
+      });
     };
+    bindSlider('rngDotSize', 'dotSize');
+    bindSlider('rngTexture', 'texture');
+    bindSlider('rngContrast', 'contrast');
+    bindSlider('rngShift', 'shift');
+    bindSlider('rngMargin', 'margin');
+
+    // Presets Modal
+    document.getElementById('btnOpenPresets').addEventListener('click', () => {
+      document.getElementById('presetModal').classList.add('open');
+      renderPresetGrid();
+    });
+
+    document.getElementById('btnClosePresets').addEventListener('click', () => {
+      document.getElementById('presetModal').classList.remove('open');
+    });
+
+    document.getElementById('btnSavePreset').addEventListener('click', () => {
+      const title = state.inks
+        .map(id => {
+          const name = INKS.find(i => i.id === id)?.name || id;
+          return name.charAt(0) + name.slice(1).toLowerCase();
+        })
+        .join(' + ');
+
+      const newPreset = {
+        title: title + ' Custom',
+        inks: [...state.inks],
+        paper: PAPERS[state.paperIndex].id,
+        style: STYLES[state.styleIndex],
+        margin: state.margin || 14,
+        shift: state.shift
+      };
+
+      state.presets.unshift(newPreset);
+      try {
+        const customOnly = state.presets.slice(0, state.presets.length - DEFAULT_PRESETS.length);
+        localStorage.setItem('risoprint_custom_presets', JSON.stringify(customOnly));
+      } catch (e) {}
+      renderPresetGrid();
+    });
+
+    // High-Res Export
+    document.getElementById('btnExport').addEventListener('click', () => {
+      const exportCanvas = document.createElement('canvas');
+      renderRisoToCanvas(exportCanvas, getCurrentConfig(), 2000);
+      exportCanvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `risoprint-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    });
+
+    // PWA Icon Download Buttons
+    document.getElementById('btnDl192').addEventListener('click', () => downloadPWAIcon(192));
+    document.getElementById('btnDl512').addEventListener('click', () => downloadPWAIcon(512));
+
+    // Initialize
+    initSwatches();
+    createDefaultImage();
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('SW registration skipped:', err);
+        });
+      });
+    }
   </script>
 </body>
 </html>
-```
