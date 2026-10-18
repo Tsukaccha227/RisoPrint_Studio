@@ -1,885 +1,1690 @@
+```html
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="フチ付け">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#111827">
-  <title>PhotoFrame Studio - 一括写真フチ付けアプリ</title>
-  
-  <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-  <link rel="apple-touch-icon" href="./icon-192.png">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RisoPrint Studio — レトロ印刷・リソグラフ変換スタジオ</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    * { -webkit-tap-highlight-color: transparent; user-select: none; }
+    :root {
+      --bg-main: #111111;
+      --bg-panel: #181818;
+      --bg-card: #202020;
+      --border-color: #2e2e2e;
+      --border-active: #555555;
+      --text-primary: #f0f0f0;
+      --text-muted: #8c8c8c;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
-      overscroll-behavior-y: none;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', 'Noto Sans JP', monospace, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
     }
-    .bg-checkerboard {
-      background-color: #18181b;
-      background-image: 
-        linear-gradient(45deg, #27272a 25%, transparent 25%), 
-        linear-gradient(-45deg, #27272a 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #27272a 75%), 
-        linear-gradient(-45deg, transparent 75%, #27272a 75%);
-      background-size: 20px 20px;
-      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-    }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    input[type="range"] { accent-color: #3b82f6; }
 
-    .workspace-layout { display: flex; flex-direction: column; }
-    .control-sidebar { max-height: 45dvh; width: 100%; border-top: 1px solid #1f2937; }
-
-    @media (orientation: landscape), (min-width: 640px) {
-      .workspace-layout { flex-direction: row; }
-      .control-sidebar { max-height: none; height: 100%; width: 360px; border-top: none; border-left: 1px solid #1f2937; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
-    @media (min-width: 960px) {
-      .control-sidebar { width: 400px; }
+    ::-webkit-scrollbar-track {
+      background: #141414;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+
+    /* Tactile Dark UI Buttons matching Screenshots */
+    .tactile-btn {
+      background-color: #181818;
+      border: 1px solid #2e2e2e;
+      color: #e5e5e5;
+      transition: all 0.15s ease;
+      letter-spacing: 0.06em;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+    .tactile-btn:hover {
+      background-color: #242424;
+      border-color: #484848;
+    }
+    .tactile-btn:active {
+      transform: translateY(1px);
+      background-color: #141414;
+    }
+    .tactile-btn.active-mode {
+      border-color: #d4d4d4;
+      background-color: #282828;
+    }
+
+    /* Striped disabled/special pattern like SAVE PRESET in screenshot */
+    .striped-btn {
+      background: repeating-linear-gradient(
+        -45deg,
+        #191919,
+        #191919 4px,
+        #232323 4px,
+        #232323 8px
+      );
+      border: 1px solid #383838;
+    }
+    .striped-btn:hover {
+      border-color: #666;
+    }
+
+    /* Ink Swatch Hatch Pattern for Special Inks */
+    .swatch-hatch {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255,255,255,0.16),
+        rgba(255,255,255,0.16) 2px,
+        transparent 2px,
+        transparent 5px
+      );
+    }
+
+    /* Custom Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #2d2d2d;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      background: #f0f0f0;
+      border: 1px solid #111;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      background: #f0f0f0;
+      border: 1px solid #111;
+      cursor: pointer;
+    }
+
+    /* Checkerboard / Workspace backdrop */
+    .canvas-stage {
+      background-color: #0d0d0d;
+      background-image: radial-gradient(#222 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+      transition: transform 0.15s ease;
     }
   </style>
 </head>
-<body class="bg-gray-950 text-gray-100 h-dvh flex flex-col overflow-hidden">
+<body class="h-screen w-screen overflow-hidden flex flex-col select-none">
 
-  <input id="fileInput" type="file" accept="image/*" multiple class="hidden">
-
-  <header class="bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-between shrink-0 z-20">
-    <div class="flex items-center gap-2">
-      <div class="w-6 h-6 rounded-md bg-white p-1 flex items-center justify-center shadow">
-        <div class="w-full h-full bg-gray-900 rounded-xs"></div>
+  <!-- TOP NAVIGATION BAR (Matches Screenshot Top Header) -->
+  <header class="h-14 shrink-0 bg-[#141414] border-b border-[#262626] px-3 sm:px-5 flex items-center justify-between z-20">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Upload / Reset Image Button -->
+      <div class="flex items-center">
+        <label for="imageInput" class="tactile-btn px-3 py-1.5 rounded-l cursor-pointer flex items-center gap-2">
+          <span class="font-semibold tracking-wider">IMAGE</span>
+        </label>
+        <button id="resetSampleBtn" title="サンプル画像に戻す" class="tactile-btn border-l-0 px-2.5 py-1.5 rounded-r text-neutral-400 hover:text-white">
+          ✕
+        </button>
+        <input id="imageInput" type="file" accept="image/*" class="hidden">
       </div>
-      <h1 class="font-bold text-sm sm:text-base tracking-tight">PhotoFrame <span class="text-[11px] font-normal text-blue-400 bg-blue-950/80 border border-blue-800 px-1.5 py-0.5 rounded">Studio</span></h1>
+
+      <!-- Preset Drawer Trigger -->
+      <button id="openPresetBtn" class="tactile-btn px-3.5 py-1.5 rounded flex items-center gap-1.5">
+        <span>PRESET</span>
+      </button>
+
+      <!-- Compare Original Button (Brush/Eye icon) -->
+      <button id="compareBtn" title="押している間、元画像を表示" class="tactile-btn px-2.5 py-1.5 rounded flex items-center justify-center">
+        <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- App Title Badge (Visible on Fold/Tablet/Desktop) -->
+    <div class="hidden md:flex items-center gap-2 text-xs tracking-widest text-neutral-400">
+      <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+      <span>RISOPRINT STUDIO</span>
+      <span id="resolutionBadge" class="text-[11px] bg-[#222] px-2 py-0.5 rounded text-neutral-400 border border-[#333]">1200×900</span>
     </div>
 
     <div class="flex items-center gap-2">
-      <button id="installAppBtn" type="button" class="hidden bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow">
-        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
-        <span>インストール</span>
+      <!-- High-Res Settings Toggle -->
+      <button id="settingsBtn" title="出力解像度・環境設定" class="tactile-btn px-2.5 py-1.5 rounded flex items-center justify-center">
+        <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
       </button>
 
-      <button id="exportBtn" type="button" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 active:scale-95 transition text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg shadow-blue-900/20">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span id="exportBtnText">一括保存</span>
+      <!-- Export Button -->
+      <button id="exportBtn" class="tactile-btn px-4 py-1.5 rounded font-semibold border-neutral-600 hover:border-white flex items-center gap-1.5">
+        <span>EXPORT</span>
       </button>
     </div>
   </header>
 
-  <div class="workspace-layout flex-1 min-h-0 min-w-0 overflow-hidden">
+  <!-- MAIN WORKSPACE: Responsive 2-Column on Fold/Tablet/Desktop, Stacked on Mobile -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
-    <main class="flex-1 flex flex-col min-h-0 min-w-0 relative bg-checkerboard">
-      
-      <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center p-6 z-20 bg-gray-950/90 backdrop-blur-sm">
-        <button id="mainSelectPhotoBtn" type="button" class="w-full max-w-md border-2 border-dashed border-gray-700 hover:border-blue-500 active:scale-[0.99] rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition bg-gray-900/60 hover:bg-gray-900">
-          <div class="w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center mb-3 text-blue-400">
-            <i data-lucide="images" class="w-7 h-7"></i>
-          </div>
-          <p class="text-base font-bold text-white mb-1">写真をタップして選択（複数可）</p>
-          <p class="text-xs text-gray-400 mb-4">元の比率を保ったまま、等しい距離で綺麗なフチをつけます</p>
-          <span class="bg-blue-600 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow">カメラロール・フォルダから選ぶ</span>
-        </button>
+    <!-- LEFT / TOP: Interactive Canvas Preview Area -->
+    <section id="dropZone" class="canvas-stage relative flex-1 flex items-center justify-center p-3 sm:p-6 overflow-hidden min-h-[42vh] lg:min-h-0">
+      <canvas id="previewCanvas" class="rounded-sm"></canvas>
+
+      <!-- Drag & Drop Overlay -->
+      <div id="dropOverlay" class="pointer-events-none opacity-0 transition-opacity duration-200 absolute inset-4 border-2 border-dashed border-orange-400/80 bg-black/70 rounded-lg flex flex-col items-center justify-center gap-2 z-30">
+        <p class="text-sm tracking-widest text-orange-300 font-semibold">DROP IMAGE HERE</p>
+        <p class="text-xs text-neutral-400">写真をドロップして印刷テクスチャに変換</p>
       </div>
 
-      <div id="previewContainer" class="flex-1 flex items-center justify-center p-4 sm:p-6 min-h-0 min-w-0 relative overflow-hidden">
-        <canvas id="previewCanvas" class="max-w-full max-h-full object-contain shadow-2xl transition-opacity duration-150"></canvas>
-        
-        <div id="imageInfoBadge" class="hidden absolute top-2.5 left-2.5 bg-gray-900/80 backdrop-blur border border-gray-700/80 text-[11px] text-gray-300 px-2.5 py-1 rounded-md flex items-center gap-2">
-          <span id="infoResolution">-- × --</span>
-          <span class="text-gray-600">|</span>
-          <span id="infoIndex">1 / 1</span>
+      <!-- Status Pill (Shows current preset / compare status) -->
+      <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+        <div id="statusBadge" class="bg-black/75 backdrop-blur-md border border-[#333] px-3 py-1 rounded text-[11px] text-neutral-300 tracking-wider">
+          PRESET: YELLOW + ORANGE + BLUE
         </div>
-
-        <div id="topRightOverlayBtns" class="hidden absolute top-2.5 right-2.5 flex items-center gap-1.5">
-          <button id="addMorePhotoBtn" type="button" class="bg-gray-900/80 hover:bg-gray-800 text-blue-400 backdrop-blur border border-gray-700/80 text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition">
-            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-            <span>追加</span>
-          </button>
-          <button id="clearAllBtn" type="button" class="bg-gray-900/80 hover:bg-red-950/90 text-gray-400 hover:text-red-300 backdrop-blur border border-gray-700/80 text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            <span>すべてクリア</span>
-          </button>
+        <div id="processingIndicator" class="hidden bg-orange-500/90 text-black font-bold px-2.5 py-0.5 rounded text-[11px] tracking-wider">
+          RENDERING...
         </div>
-      </div>
-
-      <div id="thumbnailBar" class="hidden bg-gray-900/95 border-t border-gray-800 px-3 py-1.5 shrink-0">
-        <div id="thumbnailList" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5"></div>
-      </div>
-    </main>
-
-    <section class="control-sidebar bg-gray-900 shrink-0 z-20 flex flex-col">
-      <div class="grid grid-cols-3 border-b border-gray-800 text-xs font-semibold bg-gray-950/50 shrink-0">
-        <button data-tab="color" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-blue-500 text-blue-400 bg-gray-900/60">
-          <i data-lucide="palette" class="w-3.5 h-3.5"></i>
-          <span>色・抽出</span>
-        </button>
-        <button data-tab="blur" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-transparent text-gray-400 hover:text-gray-200">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-          <span>写真ぼかし</span>
-        </button>
-        <button data-tab="size" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-transparent text-gray-400 hover:text-gray-200">
-          <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
-          <span>比率・角・影</span>
-        </button>
-      </div>
-
-      <div class="p-3.5 overflow-y-auto space-y-3.5 text-xs flex-1">
-        <div class="bg-gray-800/60 border border-gray-800 rounded-xl p-3">
-          <div class="flex justify-between items-center mb-1.5">
-            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
-              <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-blue-400"></i>
-              フチの太さ（等距離）
-            </span>
-            <span id="borderWidthLabel" class="font-mono text-blue-400 font-bold">8%</span>
-          </div>
-          <input id="borderWidthSlider" type="range" min="0" max="35" step="0.5" value="8" class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer">
-        </div>
-
-        <div id="tab-color" class="tab-panel space-y-3.5">
-          <div class="space-y-2">
-            <span class="text-gray-400 font-medium block">定番カラー & 自由選択</span>
-            <div class="flex items-center justify-between bg-gray-950/50 border border-gray-800/80 rounded-xl p-2.5">
-              <button data-color="#FFFFFF" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-white border-2 border-blue-500 shadow ring-2 ring-blue-500/40" title="白 (#FFFFFF)"></button>
-              <button data-color="#F8FAFC" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-slate-100 border border-gray-600" title="オフホワイト"></button>
-              <button data-color="#E5E5E5" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-neutral-200 border border-gray-600" title="ライトグレー"></button>
-              <button data-color="#18181B" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-zinc-900 border border-gray-600" title="ダークグレー"></button>
-              <button data-color="#000000" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-black border border-gray-600" title="黒 (#000000)"></button>
-              
-              <label class="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 via-yellow-400 to-cyan-400 p-0.5 cursor-pointer shadow">
-                <span class="w-full h-full rounded-full bg-gray-900 flex items-center justify-center">
-                  <i data-lucide="pipette" class="w-3.5 h-3.5 text-white"></i>
-                </span>
-                <input id="customColorPicker" type="color" value="#ffffff" class="sr-only">
-              </label>
-            </div>
-          </div>
-
-          <div class="bg-gray-950/60 border border-gray-800/80 rounded-xl p-3 space-y-2.5">
-            <div class="flex items-center justify-between gap-1">
-              <span class="text-gray-300 font-medium flex items-center gap-1.5">
-                <i data-lucide="wand-2" class="w-3.5 h-3.5 text-amber-400"></i>
-                写真から抽出した5色
-              </span>
-            </div>
-            
-            <div id="extractedPaletteContainer" class="grid grid-cols-5 gap-1.5 pt-0.5">
-              <p class="col-span-5 text-gray-500 text-[11px] py-1">写真を読み込むと自動で5色を抽出します</p>
-            </div>
-
-            <label class="flex items-center gap-2 text-[11px] text-gray-400 cursor-pointer pt-1 border-t border-gray-800/80">
-              <input id="autoPerPhotoToggle" type="checkbox" checked class="rounded bg-gray-800 border-gray-700 text-blue-500 focus:ring-0">
-              <span>一括保存時も各写真ごとの抽出色を使う</span>
-            </label>
-          </div>
-        </div>
-
-        <div id="tab-blur" class="tab-panel hidden space-y-3">
-          <div class="flex items-center justify-between bg-blue-950/40 border border-blue-800/50 rounded-xl px-3 py-2.5">
-            <div>
-              <p class="font-semibold text-blue-200">背景ぼかしフチモード</p>
-              <p class="text-[11px] text-blue-300/80">写真自身を拡大してぼかした背景をフチにします</p>
-            </div>
-            <span class="bg-blue-600 text-white font-semibold px-2.5 py-1 rounded-lg text-[11px] shrink-0">適用中</span>
-          </div>
-
-          <div class="space-y-2.5">
-            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
-              <div class="flex justify-between mb-1.5">
-                <span class="text-gray-300">ぼかしの強さ</span>
-                <span id="blurAmountLabel" class="font-mono text-blue-400">35px</span>
-              </div>
-              <input id="blurAmountSlider" type="range" min="5" max="100" value="35" class="w-full h-1.5 bg-gray-700 rounded-lg">
-            </div>
-
-            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
-              <div class="flex justify-between mb-1.5">
-                <span class="text-gray-300">フチの明るさ</span>
-                <span id="blurBrightLabel" class="font-mono text-blue-400">100%</span>
-              </div>
-              <input id="blurBrightSlider" type="range" min="40" max="160" value="100" class="w-full h-1.5 bg-gray-700 rounded-lg">
-            </div>
-          </div>
-        </div>
-
-        <div id="tab-size" class="tab-panel hidden space-y-3">
-          <div class="bg-gray-800/50 p-2.5 rounded-xl border border-gray-800 space-y-1.5">
-            <span class="text-gray-300 font-medium block">比率と距離のルール</span>
-            <div class="grid grid-cols-1 gap-2 pt-0.5">
-              <button data-sizing="equal-margin" type="button" class="sizing-btn py-2 px-3 rounded-lg border border-blue-500 bg-blue-950/50 text-blue-300 font-medium text-left">
-                <div class="font-bold text-xs">上下左右が完全等幅</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">4辺すべて全く同じピクセル距離でフチを追加</div>
-              </button>
-              <button data-sizing="exact-aspect" type="button" class="sizing-btn py-2 px-3 rounded-lg border border-gray-700 bg-gray-900/50 text-gray-400 font-medium text-left">
-                <div class="font-bold text-xs">外枠も同アスペクト比</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">完成画像の縦横比も元写真と100%同一に保つ</div>
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-2.5">
-            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
-              <div class="flex justify-between mb-1.5">
-                <span class="text-gray-300">写真の角丸</span>
-                <span id="radiusLabel" class="font-mono text-blue-400">0%</span>
-              </div>
-              <input id="radiusSlider" type="range" min="0" max="20" step="0.5" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg">
-            </div>
-
-            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
-              <div class="flex justify-between mb-1.5">
-                <span class="text-gray-300">写真の影 (立体感)</span>
-                <span id="shadowLabel" class="font-mono text-blue-400">0%</span>
-              </div>
-              <input id="shadowSlider" type="range" min="0" max="100" step="5" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg">
-            </div>
-          </div>
-        </div>
-
       </div>
     </section>
 
+    <!-- RIGHT / BOTTOM: Screenshot-inspired Control Deck -->
+    <aside class="w-full lg:w-[440px] xl:w-[480px] shrink-0 bg-[#141414] border-t lg:border-t-0 lg:border-l border-[#262626] flex flex-col justify-between overflow-y-auto">
+
+      <!-- Upper Section: Ink Plate Tabs & Swatch Selector -->
+      <div>
+        <!-- INK CHANNEL TABS (Matches: [■ YELLOW x] [■ ORANGE] [■ BLUE] [+]) -->
+        <div id="inkTabsContainer" class="flex items-center bg-[#0e0e0e] border-b border-[#262626] overflow-x-auto no-scrollbar">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- INK SWATCH ROW (Matches Screenshot Row of Colored Squares + Hatched Swatches) -->
+        <div class="p-3 sm:p-4 border-b border-[#222]">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] text-neutral-400 tracking-wider" id="activePlateLabel">PLATE 1 INK COLOR</span>
+            <span class="text-[11px] text-neutral-500" id="activeInkName">Fluorescent Orange</span>
+          </div>
+          <div id="swatchContainer" class="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5">
+            <!-- Auto Tone Toggle Button [A] -->
+            <button id="autoDistributeBtn" title="明暗チャンネル自動最適化" class="w-9 h-9 shrink-0 rounded-sm border border-dashed border-neutral-500 flex items-center justify-center text-xs font-bold text-neutral-200 hover:border-white">
+              A
+            </button>
+            <!-- Ink Swatches dynamically injected here -->
+          </div>
+        </div>
+
+        <!-- 3 DICE QUICK ACTION BUTTONS (Matches: [🎲 RANDOM] [🎲 STYLE] [🎲 FRAME]) -->
+        <div class="grid grid-cols-3 gap-2.5 p-3 sm:p-4 border-b border-[#222]">
+          <button id="diceRandomBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/>
+              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/>
+              <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/>
+              <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/>
+              <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
+            </svg>
+            <span>RANDOM</span>
+          </button>
+
+          <button id="diceStyleBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/>
+              <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
+              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/>
+            </svg>
+            <span id="styleBtnText">STYLE</span>
+          </button>
+
+          <button id="diceFrameBtn" class="tactile-btn py-3.5 px-2 rounded flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-neutral-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <rect x="7" y="7" width="10" height="10" rx="1"/>
+            </svg>
+            <span>FRAME</span>
+          </button>
+        </div>
+
+        <!-- DETAILED PARAMETER INSPECTOR (Expandable / Interactive Sliders for Fine Control) -->
+        <div id="parameterPanel" class="p-3.5 sm:p-4 space-y-4 bg-[#161616]">
+          <!-- Sub-panel: GRAIN & SCREEN -->
+          <div id="panelGrain" class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold tracking-wider text-neutral-300">SCREEN & GRAIN PATTERN (網点・粒子)</span>
+              <select id="patternModeSelect" class="bg-[#222] border border-[#3a3a3a] text-xs rounded px-2.5 py-1 text-neutral-200 focus:outline-none">
+                <option value="rosette">Rosette (ロゼット網点)</option>
+                <option value="halftone">Halftone Dot (クラシック網点)</option>
+                <option value="grain">Stochastic Grain (砂目・リソ粒子)</option>
+                <option value="crosshatch">Crosshatch (クロスハッチ万線)</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>DOT / GRAIN SIZE (網点サイズ)</span>
+                  <span id="valDotSize">4.5px</span>
+                </div>
+                <input id="sliderDotSize" type="range" min="2" max="12" step="0.5" value="4.5">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>ROUGHNESS (インクかすれ・繊維)</span>
+                  <span id="valRoughness">45%</span>
+                </div>
+                <input id="sliderRoughness" type="range" min="0" max="100" step="1" value="45">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>MISREGISTRATION X (版ズレ横)</span>
+                  <span id="valOffsetX">4px</span>
+                </div>
+                <input id="sliderOffsetX" type="range" min="-25" max="25" step="1" value="4">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>MISREGISTRATION Y (版ズレ縦)</span>
+                  <span id="valOffsetY">-3px</span>
+                </div>
+                <input id="sliderOffsetY" type="range" min="-25" max="25" step="1" value="-3">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-panel: PAPER & FRAME -->
+          <div id="panelPaper" class="hidden space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold tracking-wider text-neutral-300">PAPER STOCK (用紙カラー・質感)</span>
+              <span id="paperNameLabel" class="text-xs text-neutral-400">Warm Cream</span>
+            </div>
+            <div id="paperSwatches" class="flex items-center gap-2.5 pt-1">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>FRAME MARGIN (余白サイズ)</span>
+                  <span id="valMargin">8%</span>
+                </div>
+                <input id="sliderMargin" type="range" min="0" max="20" step="1" value="8">
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>EDGE BLEED (版枠のにじみ・角丸)</span>
+                  <span id="valCorner">12px</span>
+                </div>
+                <input id="sliderCorner" type="range" min="0" max="40" step="1" value="12">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-panel: TONE & INK DENSITY -->
+          <div id="panelTone" class="hidden space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold tracking-wider text-neutral-300">TONE & INK DENSITY (階調・インク濃度)</span>
+              <button id="resetToneBtn" class="text-[11px] text-neutral-400 hover:text-white underline">RESET</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>CONTRAST (コントラスト)</span>
+                  <span id="valContrast">115%</span>
+                </div>
+                <input id="sliderContrast" type="range" min="60" max="180" step="5" value="115">
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>BRIGHTNESS (明るさ)</span>
+                  <span id="valBrightness">100%</span>
+                </div>
+                <input id="sliderBrightness" type="range" min="60" max="150" step="5" value="100">
+              </div>
+              <div class="col-span-2">
+                <div class="flex justify-between text-[11px] text-neutral-400 mb-1">
+                  <span>INK DENSITY (全体のインク乗り・濃さ)</span>
+                  <span id="valDensity">92%</span>
+                </div>
+                <input id="sliderDensity" type="range" min="40" max="140" step="2" value="92">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM MODE BAR (Matches Screenshot: [GRAIN] [■ PAPER] ... [> TONE]) -->
+      <div class="p-3 sm:p-4 bg-[#111111] border-t border-[#242424] flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <button id="tabGrainBtn" class="tactile-btn active-mode px-3 py-2 rounded flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-xs border border-neutral-400 flex items-center justify-center text-[9px] leading-none">⁙</span>
+            <span>GRAIN</span>
+          </button>
+
+          <button id="tabPaperBtn" class="tactile-btn px-3 py-2 rounded flex items-center gap-2">
+            <span id="paperIndicatorBox" class="w-3.5 h-3.5 rounded-xs bg-[#ebe6da] border border-black/40 inline-block"></span>
+            <span>PAPER</span>
+          </button>
+        </div>
+
+        <button id="tabToneBtn" class="tactile-btn px-3.5 py-2 rounded flex items-center gap-1.5">
+          <span class="text-neutral-400">&gt;</span>
+          <span>TONE</span>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- PRESET GALLERY MODAL (Matches 1st Screenshot with 2-Column Preview Cards & SAVE PRESET) -->
+  <div id="presetModal" class="fixed inset-0 bg-[#121212] z-50 hidden flex-col overflow-hidden">
+    <!-- Modal Header -->
+    <div class="h-16 shrink-0 px-4 sm:px-6 border-b border-[#262626] flex items-center justify-between">
+      <button id="closePresetBtn" class="tactile-btn px-4 py-2 rounded text-xs tracking-widest">
+        CLOSE
+      </button>
+
+      <span class="text-xs tracking-widest text-neutral-400 hidden sm:inline">SELECT OR SAVE PRINT PRESET</span>
+
+      <button id="saveCustomPresetBtn" class="striped-btn px-4 py-2 rounded text-xs tracking-widest text-neutral-200 flex items-center gap-1.5">
+        <span>☆</span>
+        <span>SAVE PRESET</span>
+      </button>
+    </div>
+
+    <!-- Preset 2-Column Grid -->
+    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div id="presetGrid" class="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
+        <!-- Dynamically rendered live thumbnail cards matching screenshot -->
+      </div>
+    </div>
   </div>
 
-  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="font-bold text-base flex items-center gap-2">
-          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
-          <span>画像の書き出し・保存</span>
-        </h3>
-        <button id="closeModalBtn" type="button" class="text-gray-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+  <!-- EXPORT & RESOLUTION SETTINGS MODAL -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-[#181818] border border-[#333] rounded-md max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[#2a2a2a] pb-3">
+        <h3 class="text-sm font-semibold tracking-wider">EXPORT & RESOLUTION (高解像度出力設定)</h3>
+        <button id="closeSettingsBtn" class="text-neutral-400 hover:text-white text-sm px-2">✕</button>
       </div>
 
-      <div id="exportProgressArea" class="hidden space-y-2 py-2">
-        <div class="flex justify-between text-xs text-gray-300">
-          <span id="exportProgressText">高画質で処理中...</span>
-          <span id="exportProgressCount">0 / 0</span>
+      <div class="space-y-3 text-xs">
+        <label class="block text-neutral-400">出力解像度モード (EXPORT SCALE)</label>
+        <div class="grid grid-cols-1 gap-2">
+          <label class="flex items-center gap-3 p-2.5 rounded border border-[#333] bg-[#202020] cursor-pointer">
+            <input type="radio" name="exportScale" value="original" checked class="accent-orange-500">
+            <div>
+              <div class="font-semibold text-neutral-200">オリジナル最高画質 (最大2400万画素 / 6000px相当)</div>
+              <div class="text-[11px] text-neutral-400">元画像の解像度を維持したまま網点・紙質を高精細レンダリングします</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-2.5 rounded border border-[#333] bg-[#202020] cursor-pointer">
+            <input type="radio" name="exportScale" value="sns" class="accent-orange-500">
+            <div>
+              <div class="font-semibold text-neutral-200">SNS・Web最適サイズ (長辺 2048px)</div>
+              <div class="text-[11px] text-neutral-400">網点の粒立ちがスマホ画面で最も映えるバランスで高速書き出しします</div>
+            </div>
+          </label>
         </div>
-        <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-          <div id="exportProgressBar" class="h-full bg-blue-500 transition-all duration-200" style="width: 0%"></div>
+
+        <div class="pt-2">
+          <label class="block text-neutral-400 mb-1">ファイル形式 (FORMAT)</label>
+          <select id="exportFormatSelect" class="w-full bg-[#222] border border-[#3a3a3a] rounded px-3 py-2 text-neutral-200">
+            <option value="image/jpeg">JPEG (高画質 95%)</option>
+            <option value="image/png">PNG (ロスレス無劣化)</option>
+          </select>
         </div>
       </div>
 
-      <div id="exportActionsArea" class="space-y-2.5">
-        <p class="text-xs text-gray-400">元の高解像度を維持したまま書き出します（<span id="modalPhotoCount">1</span>枚）</p>
-        
-        <button id="shareAllBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition text-sm">
-          <i data-lucide="share" class="w-4 h-4"></i>
-          <span>スマホの写真フォルダに保存 / 共有</span>
-        </button>
-
-        <button id="downloadIndividualBtn" type="button" class="w-full bg-gray-800 hover:bg-gray-700 active:scale-[0.99] text-gray-100 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700 transition text-xs">
-          <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
-          <span>1枚ずつそのままダウンロード</span>
-        </button>
-
-        <button id="downloadZipBtn" type="button" class="w-full bg-gray-800 hover:bg-gray-700 active:scale-[0.99] text-gray-100 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700 transition text-xs">
-          <i data-lucide="folder-archive" class="w-4 h-4 text-amber-400"></i>
-          <span>ZIPファイルにまとめて一括保存</span>
+      <div class="pt-2 flex justify-end gap-2">
+        <button id="confirmExportBtn" class="tactile-btn bg-orange-600/20 border-orange-500/60 text-orange-200 px-4 py-2 rounded font-semibold">
+          今すぐ書き出す (EXPORT NOW)
         </button>
       </div>
     </div>
   </div>
 
-  <script>
-    lucide.createIcons();
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#222] border border-[#444] text-neutral-100 px-4 py-2 rounded text-xs tracking-wider shadow-xl opacity-0 pointer-events-none transition-opacity duration-200 z-50">
+    SAVED
+  </div>
 
-    (function setupPWA() {
-      if (location.pathname.startsWith('/photo_frame')) {
-        location.replace(location.href.replace('/photo_frame', '/Photo_frame'));
+  <script>
+    /********************************************************************
+     * RisoPrint Studio — Retro Risograph & Halftone Texture Engine
+     ********************************************************************/
+
+    // 1. Authentic Risograph Ink Palette (Matches Screenshot Swatches)
+    const RISO_INKS = [
+      { id: 'black',   name: 'Black',              hex: '#1c1c1c', rgb: [28, 28, 28],    hatched: false },
+      { id: 'blue',    name: 'Medium Blue',        hex: '#0078bf', rgb: [0, 120, 191],   hatched: false },
+      { id: 'pink',    name: 'Fluorescent Pink',   hex: '#ff48b0', rgb: [255, 72, 176],  hatched: false },
+      { id: 'green',   name: 'Kelly Green',        hex: '#00a95c', rgb: [0, 169, 92],    hatched: false },
+      { id: 'orange',  name: 'Fluorescent Orange', hex: '#ff6c2f', rgb: [255, 108, 47],  hatched: false },
+      { id: 'red',     name: 'Bright Red / Coral', hex: '#ff5252', rgb: [255, 82, 82],   hatched: false },
+      { id: 'yellow',  name: 'Sunflower Yellow',   hex: '#ffe800', rgb: [255, 232, 0],   hatched: false },
+      { id: 'burgundy',name: 'Burgundy (Deep)',    hex: '#914e72', rgb: [145, 78, 114],  hatched: true  },
+      { id: 'navy',    name: 'Federal Blue',       hex: '#2f4b85', rgb: [47, 75, 133],   hatched: true  },
+      { id: 'violet',  name: 'Risograph Violet',   hex: '#6e56a6', rgb: [110, 86, 166],  hatched: true  },
+      { id: 'teal',    name: 'Pine Teal',          hex: '#1b7a78', rgb: [27, 122, 120],  hatched: true  },
+      { id: 'gold',    name: 'Metallic Ochre',     hex: '#b88b4a', rgb: [184, 139, 74],  hatched: true  }
+    ];
+
+    // 2. Paper Stocks (Matches White, Cream, Kraft brown in Screenshots)
+    const PAPER_STOCKS = [
+      { id: 'cream',  name: 'Warm Cream (クリーム紙)', hex: '#ebe6da', rgb: [235, 230, 218] },
+      { id: 'white',  name: 'Pure White (上質白紙)',   hex: '#f8f8f6', rgb: [248, 248, 246] },
+      { id: 'kraft',  name: 'Kraft Brown (クラフト紙)',hex: '#b59264', rgb: [181, 146, 100] },
+      { id: 'news',   name: 'Newsprint (わら半紙)',    hex: '#dcd4c0', rgb: [220, 212, 192] },
+      { id: 'gray',   name: 'Cool Gray (グレー紙)',    hex: '#cfd3d6', rgb: [207, 211, 214] }
+    ];
+
+    // 3. Built-in Presets (Directly modeled on Screenshot 1)
+    const BUILTIN_PRESETS = [
+      {
+        name: 'Yellow + Orange + Blue',
+        plates: ['yellow', 'orange', 'blue'],
+        paper: 'cream',
+        pattern: 'rosette',
+        dotSize: 4.5,
+        roughness: 45,
+        offsetX: 4,
+        offsetY: -3,
+        margin: 0,
+        corner: 0
+      },
+      {
+        name: 'Orange + Black (Kraft)',
+        plates: ['orange', 'black'],
+        paper: 'kraft',
+        pattern: 'rosette',
+        dotSize: 4.0,
+        roughness: 55,
+        offsetX: 3,
+        offsetY: 2,
+        margin: 0,
+        corner: 0
+      },
+      {
+        name: 'Red + Black',
+        plates: ['red', 'black'],
+        paper: 'white',
+        pattern: 'halftone',
+        dotSize: 5.0,
+        roughness: 38,
+        offsetX: 3,
+        offsetY: -2,
+        margin: 12,
+        corner: 10
+      },
+      {
+        name: 'Yellow + Blue',
+        plates: ['yellow', 'blue'],
+        paper: 'cream',
+        pattern: 'grain',
+        dotSize: 4.0,
+        roughness: 52,
+        offsetX: 5,
+        offsetY: 3,
+        margin: 12,
+        corner: 12
+      },
+      {
+        name: 'Black + Pink',
+        plates: ['black', 'pink'],
+        paper: 'kraft',
+        pattern: 'rosette',
+        dotSize: 4.5,
+        roughness: 50,
+        offsetX: -4,
+        offsetY: 3,
+        margin: 12,
+        corner: 10
+      },
+      {
+        name: 'Yellow + Pink + Blue',
+        plates: ['yellow', 'pink', 'blue'],
+        paper: 'cream',
+        pattern: 'rosette',
+        dotSize: 4.5,
+        roughness: 44,
+        offsetX: 4,
+        offsetY: -3,
+        margin: 12,
+        corner: 12
+      },
+      {
+        name: 'Pink + Blue Rosette',
+        plates: ['pink', 'blue'],
+        paper: 'cream',
+        pattern: 'rosette',
+        dotSize: 5.5,
+        roughness: 40,
+        offsetX: 4,
+        offsetY: 4,
+        margin: 12,
+        corner: 12
+      },
+      {
+        name: 'Yellow + Red + Blue',
+        plates: ['yellow', 'red', 'blue'],
+        paper: 'cream',
+        pattern: 'halftone',
+        dotSize: 5.0,
+        roughness: 48,
+        offsetX: 5,
+        offsetY: -4,
+        margin: 12,
+        corner: 12
+      },
+      {
+        name: 'Orange + Green Misprint',
+        plates: ['orange', 'green'],
+        paper: 'cream',
+        pattern: 'rosette',
+        dotSize: 4.5,
+        roughness: 45,
+        offsetX: 16,
+        offsetY: -12,
+        margin: 12,
+        corner: 10
+      },
+      {
+        name: 'Pink + Blue Grain',
+        plates: ['pink', 'blue'],
+        paper: 'news',
+        pattern: 'grain',
+        dotSize: 3.5,
+        roughness: 65,
+        offsetX: 3,
+        offsetY: -3,
+        margin: 10,
+        corner: 8
+      }
+    ];
+
+    // 4. Application State
+    const state = {
+      plates: ['yellow', 'orange', 'blue'], // 1 to 3 ink IDs
+      activePlateIndex: 0,
+      paper: 'cream',
+      pattern: 'rosette', // 'rosette' | 'halftone' | 'grain' | 'crosshatch'
+      dotSize: 4.5,
+      roughness: 45,
+      offsetX: 4,
+      offsetY: -3,
+      margin: 0,
+      corner: 12,
+      contrast: 115,
+      brightness: 100,
+      density: 92,
+      activeBottomTab: 'grain',
+      isComparing: false,
+      presetName: 'Yellow + Orange + Blue',
+      customPresets: []
+    };
+
+    // Load saved custom presets from localStorage
+    try {
+      const saved = localStorage.getItem('risoprint_custom_presets');
+      if (saved) state.customPresets = JSON.parse(saved);
+    } catch (e) {
+      console.warn('Could not read localStorage presets', e);
+    }
+
+    // Source Image & Working Buffer
+    let sourceImage = null; // HTMLImageElement or HTMLCanvasElement
+    const workCanvas = document.createElement('canvas');
+    const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    // Pre-computed deterministic noise table for fast 60fps grain & fiber simulation
+    const NOISE_SIZE = 256;
+    const noiseTable = new Float32Array(NOISE_SIZE * NOISE_SIZE);
+    const fiberTable = new Float32Array(NOISE_SIZE * NOISE_SIZE);
+    (function initNoiseTables() {
+      let seed = 1337;
+      function rand() {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      }
+      for (let i = 0; i < noiseTable.length; i++) {
+        noiseTable[i] = rand() - 0.5;
+      }
+      // Directional paper fiber weave texture
+      for (let y = 0; y < NOISE_SIZE; y++) {
+        for (let x = 0; x < NOISE_SIZE; x++) {
+          const n1 = noiseTable[y * NOISE_SIZE + x];
+          const n2 = noiseTable[y * NOISE_SIZE + ((x + 1) % NOISE_SIZE)];
+          const n3 = noiseTable[((y + 1) % NOISE_SIZE) * NOISE_SIZE + x];
+          const weave = Math.sin(x * 0.65 + y * 0.2) * 0.18 + Math.cos(x * 0.2 - y * 0.65) * 0.18;
+          fiberTable[y * NOISE_SIZE + x] = (n1 * 0.5 + n2 * 0.25 + n3 * 0.25) + weave;
+        }
+      }
+    })();
+
+    /********************************************************************
+     * Generate Default Sample Artwork (Inspired by Screenshot Subject)
+     * Warm sunlit reddish-orange subject on textured sandy blue-gray ground
+     ********************************************************************/
+    function createSampleCanvas() {
+      const c = document.createElement('canvas');
+      c.width = 1000;
+      c.height = 1000;
+      const ctx = c.getContext('2d');
+
+      // Textured ground backdrop (sandy warm-cool gradient)
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, c.height);
+      bgGrad.addColorStop(0, '#6e7c7c');
+      bgGrad.addColorStop(0.28, '#959d96');
+      bgGrad.addColorStop(0.65, '#9d8f7e');
+      bgGrad.addColorStop(1, '#7c6e5c');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      // Subtle dunes / ground ripples
+      for (let i = 0; i < 4500; i++) {
+        const rx = Math.random() * c.width;
+        const ry = Math.random() * c.height;
+        const rw = 6 + Math.random() * 28;
+        const rh = 2 + Math.random() * 5;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(235, 220, 195, 0.14)' : 'rgba(35, 48, 52, 0.14)';
+        ctx.fillRect(rx, ry, rw, rh);
+      }
+
+      // Upper shadow wave
+      ctx.fillStyle = 'rgba(30, 45, 42, 0.38)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(c.width, 0);
+      ctx.lineTo(c.width, 220);
+      ctx.quadraticCurveTo(620, 190, 280, 60);
+      ctx.closePath();
+      ctx.fill();
+
+      // Cast shadow beneath subject (deep teal-charcoal shadow)
+      ctx.save();
+      ctx.translate(510, 565);
+      ctx.rotate(-0.08);
+      const shadowGrad = ctx.createRadialGradient(0, 0, 30, 0, 0, 290);
+      shadowGrad.addColorStop(0, 'rgba(15, 32, 34, 0.92)');
+      shadowGrad.addColorStop(0.55, 'rgba(22, 48, 52, 0.65)');
+      shadowGrad.addColorStop(1, 'rgba(22, 48, 52, 0)');
+      ctx.fillStyle = shadowGrad;
+      ctx.beginPath();
+      ctx.ellipse(-35, 30, 300, 155, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Main curled subject (Vibrant orange-red curled creature / fox-like form)
+      ctx.save();
+      // Tail / left extension
+      const tailGrad = ctx.createLinearGradient(180, 430, 380, 470);
+      tailGrad.addColorStop(0, '#c85a17');
+      tailGrad.addColorStop(1, '#7a2e0e');
+      ctx.fillStyle = tailGrad;
+      ctx.beginPath();
+      ctx.moveTo(390, 445);
+      ctx.quadraticCurveTo(240, 415, 195, 438);
+      ctx.quadraticCurveTo(255, 478, 385, 485);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rounded main body dome
+      const bodyGrad = ctx.createRadialGradient(540, 360, 40, 540, 460, 280);
+      bodyGrad.addColorStop(0, '#ff7714');
+      bodyGrad.addColorStop(0.45, '#f2541b');
+      bodyGrad.addColorStop(0.78, '#b82914');
+      bodyGrad.addColorStop(1, '#4c180d');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(345, 480);
+      ctx.bezierCurveTo(355, 300, 535, 255, 675, 295);
+      ctx.bezierCurveTo(800, 335, 865, 435, 825, 525);
+      ctx.bezierCurveTo(790, 595, 690, 610, 625, 595);
+      ctx.bezierCurveTo(535, 575, 425, 575, 345, 480);
+      ctx.closePath();
+      ctx.fill();
+
+      // Sunlit rim highlight along top back and cheek
+      const rimGrad = ctx.createLinearGradient(440, 280, 680, 520);
+      rimGrad.addColorStop(0, 'rgba(255, 238, 170, 0.85)');
+      rimGrad.addColorStop(0.5, 'rgba(255, 160, 60, 0.35)');
+      rimGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = rimGrad;
+      ctx.beginPath();
+      ctx.ellipse(545, 380, 175, 85, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright white/cream fur patch near center-left
+      ctx.fillStyle = '#fff5dc';
+      ctx.beginPath();
+      ctx.ellipse(490, 470, 45, 24, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tucked limbs / claws in foreground
+      ctx.fillStyle = '#9ec4d6';
+      ctx.beginPath();
+      ctx.ellipse(485, 555, 18, 48, 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+      return c;
+    }
+
+    /********************************************************************
+     * Load Image into Working Buffer
+     ********************************************************************/
+    function setSourceImage(imgElement) {
+      sourceImage = imgElement;
+      const maxWorkDim = 960; // Optimal interactive preview speed & crisp halftone dots
+      const w = imgElement.width || imgElement.naturalWidth;
+      const h = imgElement.height || imgElement.naturalHeight;
+      const scale = Math.min(1, maxWorkDim / Math.max(w, h));
+      workCanvas.width = Math.max(1, Math.round(w * scale));
+      workCanvas.height = Math.max(1, Math.round(h * scale));
+      workCtx.drawImage(imgElement, 0, 0, workCanvas.width, workCanvas.height);
+
+      const badge = document.getElementById('resolutionBadge');
+      if (badge) badge.textContent = `${w}×${h}px`;
+
+      scheduleRender();
+    }
+
+    /********************************************************************
+     * Core Print / Risograph Rendering Pipeline
+     * Can render to previewCanvas (interactive) or any targetCanvas (High-Res Export)
+     ********************************************************************/
+    let renderPending = false;
+    function scheduleRender() {
+      if (renderPending) return;
+      renderPending = true;
+      requestAnimationFrame(() => {
+        renderPending = false;
+        renderPrintEffect(workCanvas, previewCanvas, 1.0);
+      });
+    }
+
+    function getInkById(id) {
+      return RISO_INKS.find(i => i.id === id) || RISO_INKS[0];
+    }
+
+    function getPaperById(id) {
+      return PAPER_STOCKS.find(p => p.id === id) || PAPER_STOCKS[0];
+    }
+
+    /**
+     * Evaluates the halftone / screen threshold at coordinates (x, y) for a given plate
+     */
+    function sampleScreenPattern(x, y, freq, cosA, sinA, patternMode, roughNoise) {
+      // Rotate coordinates for angled screen (Rosette / Halftone / Crosshatch)
+      const rx = (x * cosA - y * sinA) * freq;
+      const ry = (x * sinA + y * cosA) * freq;
+
+      if (patternMode === 'grain') {
+        // Stochastic high-frequency riso grain dithering
+        const gx = Math.abs(Math.floor(x * freq * 0.85)) % NOISE_SIZE;
+        const gy = Math.abs(Math.floor(y * freq * 0.85)) % NOISE_SIZE;
+        const n = noiseTable[gy * NOISE_SIZE + gx] + 0.5;
+        return n * 0.75 + (roughNoise + 0.5) * 0.25;
+      }
+
+      if (patternMode === 'crosshatch') {
+        // Engraved line / crosshatch screen
+        const s1 = Math.sin(rx) * 0.5 + 0.5;
+        const s2 = Math.cos(ry * 0.85) * 0.5 + 0.5;
+        return (s1 * 0.65 + s2 * 0.35);
+      }
+
+      // 'rosette' or 'halftone': Euclidean cosine dot screen
+      const dotWave = (Math.sin(rx) * Math.sin(ry)) * 0.5 + 0.5;
+      return dotWave;
+    }
+
+    /**
+     * Renders the full multi-plate Risograph simulation onto targetCanvas
+     */
+    function renderPrintEffect(srcCanvas, targetCanvas, resolutionScale = 1.0) {
+      const width = srcCanvas.width;
+      const height = srcCanvas.height;
+      targetCanvas.width = width;
+      targetCanvas.height = height;
+      const ctx = targetCanvas.getContext('2d');
+
+      // If Compare button is held down, show original unmodified image
+      if (state.isComparing) {
+        ctx.drawImage(srcCanvas, 0, 0);
         return;
       }
 
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js');
+      const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
+      const srcData = srcCtx.getImageData(0, 0, width, height).data;
+      const outImg = ctx.createImageData(width, height);
+      const outData = outImg.data;
+
+      const paper = getPaperById(state.paper);
+      const paperR = paper.rgb[0];
+      const paperG = paper.rgb[1];
+      const paperB = paper.rgb[2];
+
+      const numPlates = state.plates.length;
+      const activeInks = state.plates.map(id => getInkById(id));
+
+      // Scale parameters proportionally when exporting at higher resolution
+      const dotPitch = Math.max(1.8, state.dotSize * resolutionScale);
+      const baseFreq = (Math.PI * 2) / dotPitch;
+      const roughStrength = state.roughness / 100;
+      const contrastFactor = state.contrast / 100;
+      const brightFactor = state.brightness / 100;
+      const inkDensity = state.density / 100;
+
+      // Screen angles for authentic multi-plate Rosette moire (15°, 45°, 75°)
+      const anglesDeg = state.pattern === 'halftone' ? [45, 45, 45] : [15, 75, 45];
+      const cosAngles = anglesDeg.map(a => Math.cos((a * Math.PI) / 180));
+      const sinAngles = anglesDeg.map(a => Math.sin((a * Math.PI) / 180));
+
+      // Registration offsets per plate (Plate 0 is anchor, Plate 1 & 2 shift in opposite directions)
+      const offX = Math.round(state.offsetX * resolutionScale);
+      const offY = Math.round(state.offsetY * resolutionScale);
+      const plateOffsets = [
+        { dx: 0, dy: 0 },
+        { dx: offX, dy: offY },
+        { dx: -Math.round(offX * 0.75), dy: Math.round(offY * 0.85) }
+      ];
+
+      // Frame Margin & Rounded Print Block Geometry
+      const marginPxX = Math.round((state.margin / 100) * width);
+      const marginPxY = Math.round((state.margin / 100) * height);
+      const cornerRadius = Math.round(state.corner * resolutionScale * (state.margin > 0 ? 1.5 : 0));
+      const hasMargin = state.margin > 0;
+
+      const minX = marginPxX;
+      const maxX = width - marginPxX;
+      const minY = marginPxY;
+      const maxY = height - marginPxY;
+
+      // Helper to check if point (px, py) is inside the rounded ink block (with rough edge bleed)
+      function isInsidePrintBlock(px, py, edgeJitter) {
+        if (!hasMargin) return true;
+        const jx = px + edgeJitter;
+        const jy = py + edgeJitter;
+        if (jx < minX || jx > maxX || jy < minY || jy > maxY) return false;
+        if (cornerRadius <= 0) return true;
+
+        // Corner distance check
+        let cx = 0, cy = 0;
+        if (jx < minX + cornerRadius && jy < minY + cornerRadius) {
+          cx = minX + cornerRadius - jx;
+          cy = minY + cornerRadius - jy;
+        } else if (jx > maxX - cornerRadius && jy < minY + cornerRadius) {
+          cx = jx - (maxX - cornerRadius);
+          cy = minY + cornerRadius - jy;
+        } else if (jx < minX + cornerRadius && jy > maxY - cornerRadius) {
+          cx = minX + cornerRadius - jx;
+          cy = jy - (maxY - cornerRadius);
+        } else if (jx > maxX - cornerRadius && jy > maxY - cornerRadius) {
+          cx = jx - (maxX - cornerRadius);
+          cy = jy - (maxY - cornerRadius);
+        }
+        if (cx > 0 && cy > 0) {
+          return (cx * cx + cy * cy) <= (cornerRadius * cornerRadius);
+        }
+        return true;
       }
 
-      let deferredPrompt = null;
-      const installBtn = document.getElementById('installAppBtn');
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        installBtn.classList.remove('hidden');
-      });
+      /**
+       * Computes ink separation weight [0..1] for a given pixel (r,g,b) and plate index
+       */
+      function computePlateIntensity(r, g, b, plateIdx) {
+        // Apply brightness & contrast
+        let nr = ((r / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
+        let ng = ((g / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
+        let nb = ((b / 255) * brightFactor - 0.5) * contrastFactor + 0.5;
+        nr = nr < 0 ? 0 : nr > 1 ? 1 : nr;
+        ng = ng < 0 ? 0 : ng > 1 ? 1 : ng;
+        nb = nb < 0 ? 0 : nb > 1 ? 1 : nb;
 
-      installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installBtn.classList.add('hidden');
-      });
-    })();
+        const luma = 0.299 * nr + 0.587 * ng + 0.114 * nb;
+        const darkness = 1.0 - luma;
 
-    const state = {
-      photos: [],
-      currentIndex: 0,
-      mode: 'solid',
-      solidColor: '#FFFFFF',
-      extractedIndex: 0,
-      autoPerPhotoPalette: true,
-      borderPercent: 8,
-      sizingRule: 'equal-margin',
-      blurAmount: 35,
-      blurBrightness: 100,
-      cornerRadius: 0,
-      shadowStrength: 0
-    };
+        // Warmth (Red/Orange/Yellow bias) vs Coolness (Blue/Cyan/Shadow bias)
+        const warmth = Math.max(0, (nr - nb) * 0.85 + (ng - nb) * 0.25);
+        const redness = Math.max(0, nr - (ng * 0.65 + nb * 0.35));
 
-    const fileInput = document.getElementById('fileInput');
-    const mainSelectPhotoBtn = document.getElementById('mainSelectPhotoBtn');
-    const addMorePhotoBtn = document.getElementById('addMorePhotoBtn');
-    const emptyState = document.getElementById('emptyState');
-    const previewContainer = document.getElementById('previewContainer');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const thumbnailBar = document.getElementById('thumbnailBar');
-    const thumbnailList = document.getElementById('thumbnailList');
-    const exportBtn = document.getElementById('exportBtn');
-    const exportBtnText = document.getElementById('exportBtnText');
-    const imageInfoBadge = document.getElementById('imageInfoBadge');
-    const infoResolution = document.getElementById('infoResolution');
-    const infoIndex = document.getElementById('infoIndex');
-    const topRightOverlayBtns = document.getElementById('topRightOverlayBtns');
-    const clearAllBtn = document.getElementById('clearAllBtn');
-    const extractedPaletteContainer = document.getElementById('extractedPaletteContainer');
+        if (numPlates === 1) {
+          return Math.min(1, darkness * inkDensity);
+        }
 
-    mainSelectPhotoBtn.addEventListener('click', () => {
-      fileInput.value = '';
-      fileInput.click();
-    });
+        if (numPlates === 2) {
+          // 2-Color Duotone Separation:
+          // Plate 0 carries warm tones & mid-highlights; Plate 1 carries cool tones & deep shadows
+          if (plateIdx === 0) {
+            const val = warmth * 0.95 + (1.0 - Math.abs(luma - 0.55) * 1.6) * 0.45 + darkness * 0.25;
+            return Math.max(0, Math.min(1, val * inkDensity));
+          } else {
+            const cool = Math.max(0, (nb - nr) * 0.6);
+            const val = Math.pow(darkness, 1.15) * 0.92 + cool * 0.55;
+            return Math.max(0, Math.min(1, val * inkDensity));
+          }
+        }
 
-    addMorePhotoBtn.addEventListener('click', () => {
-      fileInput.value = '';
-      fileInput.click();
-    });
-
-    fileInput.addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files || []);
-      if (!files.length) return;
-
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue;
-        try {
-          const img = await loadImage(file);
-          const palette = extractFiveColors(img);
-          state.photos.push({
-            id: String(Date.now() + Math.random()),
-            file,
-            name: file.name.replace(/\.[^/.]+$/, ''),
-            img,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-            palette
-          });
-        } catch (err) {
-          console.error('画像読み込みエラー:', err);
+        // 3-Color Separation (e.g. Yellow + Orange/Pink + Blue/Black like Screenshot 2):
+        if (plateIdx === 0) {
+          // Plate 0 (Highlight / Warm base): strong in warm midtones & highlights
+          const val = warmth * 0.9 + (1.0 - luma) * 0.42 - redness * 0.2;
+          return Math.max(0, Math.min(1, val * inkDensity));
+        } else if (plateIdx === 1) {
+          // Plate 1 (Midtone / Vibrant accent): strong in saturated warm/mid regions
+          const midPeak = Math.max(0, 1.0 - Math.abs(luma - 0.48) * 2.1);
+          const val = redness * 1.15 + warmth * 0.55 + midPeak * 0.48;
+          return Math.max(0, Math.min(1, val * inkDensity));
+        } else {
+          // Plate 2 (Shadow / Cool structure plate): strong in shadows & cool ground textures
+          const coolness = Math.max(0, (1.0 - nr) * 0.55 + (nb - nr * 0.5) * 0.45);
+          const val = Math.pow(darkness, 1.25) * 0.9 + coolness * 0.42;
+          return Math.max(0, Math.min(1, val * inkDensity));
         }
       }
 
-      if (state.photos.length > 0) {
-        emptyState.classList.add('hidden');
-        thumbnailBar.classList.remove('hidden');
-        imageInfoBadge.classList.remove('hidden');
-        topRightOverlayBtns.classList.remove('hidden');
-        exportBtn.disabled = false;
-        exportBtnText.textContent = state.photos.length > 1 ? `一括保存 (${state.photos.length}枚)` : '保存する';
-        
-        renderThumbnails();
-        renderExtractedPalette();
-        renderPreview();
-      }
-    });
+      // Pixel Loop
+      for (let y = 0; y < height; y++) {
+        const ny = y % NOISE_SIZE;
+        const rowOffset = y * width;
 
-    function loadImage(file) {
-      return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = url;
-      });
+        for (let x = 0; x < width; x++) {
+          const nx = x % NOISE_SIZE;
+          const nIdx = ny * NOISE_SIZE + nx;
+          const grainVal = noiseTable[nIdx];
+          const fiberVal = fiberTable[nIdx];
+
+          // Start with Paper Base + subtle paper fiber grain
+          const paperGrainShift = fiberVal * (14 + roughStrength * 24);
+          let curR = paperR + paperGrainShift;
+          let curG = paperG + paperGrainShift;
+          let curB = paperB + paperGrainShift;
+
+          // Edge jitter for rough screenprint frame border
+          const edgeJitter = grainVal * roughStrength * 6.5 * resolutionScale;
+
+          // Loop through each active ink plate
+          for (let p = 0; p < numPlates; p++) {
+            const off = plateOffsets[p];
+            const sx = x - off.dx;
+            const sy = y - off.dy;
+
+            // Check if this plate's shifted coordinate falls inside the print block
+            if (!isInsidePrintBlock(sx, sy, edgeJitter)) continue;
+
+            // Clamp sample coordinates to image bounds
+            const csx = sx < 0 ? 0 : sx >= width ? width - 1 : sx;
+            const csy = sy < 0 ? 0 : sy >= height ? height - 1 : sy;
+            const srcIdx = (csy * width + csx) * 4;
+
+            const sr = srcData[srcIdx];
+            const sg = srcData[srcIdx + 1];
+            const sb = srcData[srcIdx + 2];
+
+            let inkTarget = computePlateIntensity(sr, sg, sb, p);
+
+            // Modulate ink target with paper fiber & roughness (ink skipping on rough paper valleys)
+            inkTarget += (grainVal * 0.45 + fiberVal * 0.35) * roughStrength;
+
+            if (inkTarget <= 0.04) continue;
+
+            // Evaluate halftone / rosette / stochastic screen at shifted plate coordinate
+            const screenThreshold = sampleScreenPattern(
+              sx,
+              sy,
+              baseFreq,
+              cosAngles[p],
+              sinAngles[p],
+              state.pattern,
+              grainVal
+            );
+
+            // Soft anti-aliased halftone dot edge with organic ink bleed
+            const edgeSoftness = 0.22 + roughStrength * 0.18;
+            let dotCoverage = (inkTarget - screenThreshold * 0.82) / edgeSoftness;
+            if (dotCoverage <= 0) continue;
+            if (dotCoverage > 1) dotCoverage = 1;
+
+            // Slight ink starvation inside heavy solids (authentic Riso drum texture)
+            const drumTexture = 1.0 - Math.max(0, -fiberVal * roughStrength * 0.42);
+            const alpha = dotCoverage * drumTexture * 0.92;
+
+            // Realistic translucent Risograph ink multiply-blend onto current paper/ink layer
+            const ink = activeInks[p].rgb;
+            const blendR = (curR * ink[0]) / 255;
+            const blendG = (curG * ink[1]) / 255;
+            const blendB = (curB * ink[2]) / 255;
+
+            // Mix between pure colour replacement and subtractive multiply so light inks (like Yellow) stay vibrant
+            const inkLuma = (ink[0] * 0.299 + ink[1] * 0.587 + ink[2] * 0.114) / 255;
+            const mixMode = 0.45 + (1 - inkLuma) * 0.45;
+            const targetR = blendR * mixMode + ink[0] * (1 - mixMode);
+            const targetG = blendG * mixMode + ink[1] * (1 - mixMode);
+            const targetB = blendB * mixMode + ink[2] * (1 - mixMode);
+
+            curR = curR + (targetR - curR) * alpha;
+            curG = curG + (targetG - curG) * alpha;
+            curB = curB + (targetB - curB) * alpha;
+          }
+
+          const outIdx = (rowOffset + x) * 4;
+          outData[outIdx]     = curR < 0 ? 0 : curR > 255 ? 255 : curR;
+          outData[outIdx + 1] = curG < 0 ? 0 : curG > 255 ? 255 : curG;
+          outData[outIdx + 2] = curB < 0 ? 0 : curB > 255 ? 255 : curB;
+          outData[outIdx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(outImg, 0, 0);
     }
 
-    function extractFiveColors(img) {
-      const sampleSize = 64;
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = sampleSize;
-      canvas.height = sampleSize;
-      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
-      
-      const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
-      const pixels = [];
-      for (let i = 0; i < data.length; i += 16) {
-        if (data[i + 3] < 128) continue;
-        pixels.push([data[i], data[i + 1], data[i + 2]]);
-      }
-      if (pixels.length < 5) {
-        return ['#FFFFFF', '#E2E8F0', '#94A3B8', '#475569', '#1E293B'];
-      }
+    /********************************************************************
+     * UI Rendering & Event Bindings
+     ********************************************************************/
+    function renderInkTabs() {
+      const container = document.getElementById('inkTabsContainer');
+      container.innerHTML = '';
 
-      const k = 5;
-      const centroids = [pixels[Math.floor(pixels.length / 2)]];
-      while (centroids.length < k) {
-        let farthestPixel = pixels[0];
-        let maxDist = -1;
-        for (const p of pixels) {
-          let minDistToCentroid = Infinity;
-          for (const c of centroids) {
-            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
-            if (d < minDistToCentroid) minDistToCentroid = d;
-          }
-          if (minDistToCentroid > maxDist) {
-            maxDist = minDistToCentroid;
-            farthestPixel = p;
-          }
-        }
-        centroids.push([...farthestPixel]);
-      }
+      state.plates.forEach((inkId, idx) => {
+        const ink = getInkById(inkId);
+        const isActive = idx === state.activePlateIndex;
 
-      let clusters = Array.from({ length: k }, () => []);
-      for (let iter = 0; iter < 8; iter++) {
-        clusters = Array.from({ length: k }, () => []);
-        for (const p of pixels) {
-          let bestIdx = 0;
-          let bestDist = Infinity;
-          for (let i = 0; i < k; i++) {
-            const c = centroids[i];
-            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
-            if (d < bestDist) {
-              bestDist = d;
-              bestIdx = i;
+        const tab = document.createElement('div');
+        tab.className = `flex items-center gap-2 px-3.5 py-2.5 border-r border-[#262626] cursor-pointer text-xs tracking-wider transition-colors ${
+          isActive
+            ? 'bg-[#1c1c1c] text-white font-semibold border-t-2 border-t-neutral-300'
+            : 'bg-[#111111] text-neutral-400 hover:bg-[#161616] hover:text-neutral-200'
+        }`;
+
+        // Color indicator square
+        const swatchBox = document.createElement('span');
+        swatchBox.className = 'w-3 h-3 rounded-xs shrink-0 border border-black/40';
+        swatchBox.style.backgroundColor = ink.hex;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = ink.id.toUpperCase();
+
+        tab.appendChild(swatchBox);
+        tab.appendChild(nameSpan);
+
+        // Remove plate button '×' (if more than 1 plate exists)
+        if (state.plates.length > 1) {
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'ml-1.5 text-neutral-500 hover:text-white px-1';
+          removeBtn.textContent = '✕';
+          removeBtn.title = 'このインク版を削除';
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.plates.splice(idx, 1);
+            if (state.activePlateIndex >= state.plates.length) {
+              state.activePlateIndex = state.plates.length - 1;
             }
-          }
-          clusters[bestIdx].push(p);
+            updateUIFromState();
+            scheduleRender();
+          });
+          tab.appendChild(removeBtn);
         }
-        for (let i = 0; i < k; i++) {
-          if (clusters[i].length === 0) continue;
-          let r = 0, g = 0, b = 0;
-          for (const p of clusters[i]) { r += p[0]; g += p[1]; b += p[2]; }
-          centroids[i] = [
-            Math.round(r / clusters[i].length),
-            Math.round(g / clusters[i].length),
-            Math.round(b / clusters[i].length)
-          ];
-        }
-      }
 
-      return centroids
-        .map((c, idx) => ({ rgb: c, count: clusters[idx].length }))
-        .sort((a, b) => b.count - a.count)
-        .map(item => rgbToHex(item.rgb[0], item.rgb[1], item.rgb[2]));
-    }
+        tab.addEventListener('click', () => {
+          state.activePlateIndex = idx;
+          updateUIFromState();
+        });
 
-    function rgbToHex(r, g, b) {
-      return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('').toUpperCase();
-    }
-
-    function renderPhotoWithFrame(targetCanvas, photoObj, maxPreviewDimension = null) {
-      const img = photoObj.img;
-      const origW = photoObj.width;
-      const origH = photoObj.height;
-
-      let scale = 1;
-      if (maxPreviewDimension) {
-        const maxSide = Math.max(origW, origH);
-        if (maxSide > maxPreviewDimension) {
-          scale = maxPreviewDimension / maxSide;
-        }
-      }
-
-      const innerW = Math.round(origW * scale);
-      const innerH = Math.round(origH * scale);
-      const minSide = Math.min(innerW, innerH);
-
-      const ratio = state.borderPercent / 100;
-      let padX, padY;
-
-      if (state.sizingRule === 'equal-margin') {
-        const equalPad = Math.round(minSide * ratio);
-        padX = equalPad;
-        padY = equalPad;
-      } else {
-        padX = Math.round(innerW * ratio);
-        padY = Math.round(innerH * ratio);
-      }
-
-      const totalW = innerW + padX * 2;
-      const totalH = innerH + padY * 2;
-
-      targetCanvas.width = totalW;
-      targetCanvas.height = totalH;
-      const ctx = targetCanvas.getContext('2d');
-      ctx.save();
-
-      if (state.mode === 'blur') {
-        const blurPx = Math.max(2, Math.round((state.blurAmount / 1000) * Math.max(totalW, totalH)));
-        const expand = blurPx * 3;
-        ctx.fillStyle = '#111111';
-        ctx.fillRect(0, 0, totalW, totalH);
-
-        ctx.save();
-        ctx.filter = `blur(${blurPx}px) brightness(${state.blurBrightness}%) saturate(115%)`;
-        ctx.drawImage(img, -expand, -expand, totalW + expand * 2, totalH + expand * 2);
-        ctx.restore();
-      } else {
-        let fillColor = state.solidColor;
-        if (state.mode === 'extracted') {
-          if (state.autoPerPhotoPalette) {
-            fillColor = photoObj.palette[state.extractedIndex] || '#FFFFFF';
-          } else {
-            const currentPhoto = state.photos[state.currentIndex] || photoObj;
-            fillColor = currentPhoto.palette[state.extractedIndex] || '#FFFFFF';
-          }
-        }
-        ctx.fillStyle = fillColor;
-        ctx.fillRect(0, 0, totalW, totalH);
-      }
-
-      const radiusPx = Math.round((state.cornerRadius / 100) * (minSide / 2));
-
-      if (state.shadowStrength > 0 && state.borderPercent > 0) {
-        ctx.save();
-        const shadowBlur = Math.round((state.shadowStrength / 100) * (minSide * 0.08));
-        const shadowOffsetY = Math.round(shadowBlur * 0.35);
-        ctx.shadowColor = `rgba(0, 0, 0, ${(state.shadowStrength / 100) * 0.55})`;
-        ctx.shadowBlur = shadowBlur;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = shadowOffsetY;
-
-        drawRoundedRectPath(ctx, padX, padY, innerW, innerH, radiusPx);
-        ctx.fillStyle = '#000000';
-        ctx.fill();
-        ctx.restore();
-      }
-
-      ctx.save();
-      if (radiusPx > 0) {
-        drawRoundedRectPath(ctx, padX, padY, innerW, innerH, radiusPx);
-        ctx.clip();
-      }
-      ctx.drawImage(img, padX, padY, innerW, innerH);
-      ctx.restore();
-
-      ctx.restore();
-      return { totalW: origW + Math.round((padX / scale) * 2), totalH: origH + Math.round((padY / scale) * 2) };
-    }
-
-    function drawRoundedRectPath(ctx, x, y, w, h, r) {
-      const radius = Math.min(r, w / 2, h / 2);
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.arcTo(x + w, y, x + w, y + h, radius);
-      ctx.arcTo(x + w, y + h, x, y + h, radius);
-      ctx.arcTo(x, y + h, x, y, radius);
-      ctx.arcTo(x, y, x + w, y, radius);
-      ctx.closePath();
-    }
-
-    function renderPreview() {
-      if (!state.photos.length) return;
-      const current = state.photos[state.currentIndex];
-      
-      const containerW = previewContainer.clientWidth - 32;
-      const containerH = previewContainer.clientHeight - 32;
-      const maxDim = Math.max(containerW, containerH, 1000);
-
-      const info = renderPhotoWithFrame(previewCanvas, current, maxDim);
-      infoResolution.textContent = `出力: ${info.totalW} × ${info.totalH}px`;
-      infoIndex.textContent = `${state.currentIndex + 1} / ${state.photos.length}枚目`;
-    }
-
-    window.addEventListener('resize', () => {
-      if (state.photos.length > 0) renderPreview();
-    });
-
-    function renderThumbnails() {
-      thumbnailList.innerHTML = '';
-      state.photos.forEach((photo, idx) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = `relative shrink-0 w-12 h-12 rounded-lg overflow-hidden cursor-pointer border-2 transition ${
-          idx === state.currentIndex ? 'border-blue-500 scale-105 shadow-md' : 'border-gray-700 opacity-60 hover:opacity-100'
-        }`;
-        
-        const thumbImg = document.createElement('img');
-        thumbImg.src = photo.img.src;
-        thumbImg.className = 'w-full h-full object-cover';
-        wrapper.appendChild(thumbImg);
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.innerHTML = '×';
-        delBtn.className = 'absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white text-[10px] leading-none flex items-center justify-center hover:bg-red-600';
-        delBtn.onclick = (e) => {
-          e.stopPropagation();
-          state.photos.splice(idx, 1);
-          if (state.currentIndex >= state.photos.length) {
-            state.currentIndex = Math.max(0, state.photos.length - 1);
-          }
-          if (state.photos.length === 0) {
-            resetToEmpty();
-          } else {
-            exportBtnText.textContent = state.photos.length > 1 ? `一括保存 (${state.photos.length}枚)` : '保存する';
-            renderThumbnails();
-            renderExtractedPalette();
-            renderPreview();
-          }
-        };
-        wrapper.appendChild(delBtn);
-
-        wrapper.onclick = () => {
-          state.currentIndex = idx;
-          renderThumbnails();
-          renderExtractedPalette();
-          renderPreview();
-        };
-
-        thumbnailList.appendChild(wrapper);
+        container.appendChild(tab);
       });
+
+      // Add '+' button if fewer than 3 plates (Matches Screenshot 3: [+])
+      if (state.plates.length < 3) {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'px-4 py-2.5 text-neutral-400 hover:text-white hover:bg-[#1a1a1a] border-r border-[#262626] text-sm font-bold';
+        addBtn.textContent = '+';
+        addBtn.title = 'インク版を追加 (最大3色刷り)';
+        addBtn.addEventListener('click', () => {
+          // Pick an unused ink color
+          const unused = RISO_INKS.find(i => !state.plates.includes(i.id)) || RISO_INKS[1];
+          state.plates.push(unused.id);
+          state.activePlateIndex = state.plates.length - 1;
+          updateUIFromState();
+          scheduleRender();
+        });
+        container.appendChild(addBtn);
+      }
     }
 
-    function renderExtractedPalette() {
-      if (!state.photos.length) return;
-      const current = state.photos[state.currentIndex];
-      extractedPaletteContainer.innerHTML = '';
+    function renderInkSwatches() {
+      const container = document.getElementById('swatchContainer');
+      const autoBtn = document.getElementById('autoDistributeBtn');
+      container.innerHTML = '';
+      container.appendChild(autoBtn);
 
-      current.palette.forEach((hex, idx) => {
-        const isSelected = state.mode === 'extracted' && state.extractedIndex === idx;
+      const currentInkId = state.plates[state.activePlateIndex];
+      const activeInkObj = getInkById(currentInkId);
+
+      document.getElementById('activePlateLabel').textContent = `PLATE ${state.activePlateIndex + 1} INK COLOR`;
+      document.getElementById('activeInkName').textContent = activeInkObj.name;
+
+      RISO_INKS.forEach(ink => {
         const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `h-10 rounded-lg border flex items-center justify-center transition relative ${
-          isSelected ? 'border-blue-400 ring-2 ring-blue-500/50 scale-105 z-10' : 'border-gray-700 hover:scale-102'
+        const isSelected = ink.id === currentInkId;
+        btn.className = `w-9 h-9 shrink-0 rounded-xs transition-transform ${
+          ink.hatched ? 'swatch-hatch' : ''
+        } ${
+          isSelected
+            ? 'ring-2 ring-white scale-105 z-10'
+            : 'border border-black/50 opacity-90 hover:opacity-100'
         }`;
-        btn.style.backgroundColor = hex;
-        btn.title = `抽出カラー ${idx + 1}: ${hex}`;
+        btn.style.backgroundColor = ink.hex;
+        btn.title = ink.name;
 
-        const label = document.createElement('span');
-        label.className = 'text-[9px] font-mono px-1 py-0.5 rounded bg-black/55 text-white';
-        label.textContent = hex;
-        btn.appendChild(label);
+        btn.addEventListener('click', () => {
+          state.plates[state.activePlateIndex] = ink.id;
+          state.presetName = state.plates.map(p => p.toUpperCase()).join(' + ');
+          updateUIFromState();
+          scheduleRender();
+        });
 
-        btn.onclick = () => {
-          state.mode = 'extracted';
-          state.extractedIndex = idx;
-          updateColorSelectionUI();
-          renderExtractedPalette();
-          renderPreview();
+        container.appendChild(btn);
+      });
+    }
+
+    function renderPaperSwatches() {
+      const container = document.getElementById('paperSwatches');
+      container.innerHTML = '';
+
+      PAPER_STOCKS.forEach(p => {
+        const isSelected = p.id === state.paper;
+        const btn = document.createElement('button');
+        btn.className = `h-9 flex-1 rounded-xs transition-all flex items-center justify-center text-[10px] font-bold ${
+          isSelected ? 'ring-2 ring-white scale-105' : 'border border-neutral-600 opacity-80 hover:opacity-100'
+        }`;
+        btn.style.backgroundColor = p.hex;
+        btn.style.color = '#222';
+        btn.textContent = p.id.toUpperCase();
+        btn.addEventListener('click', () => {
+          state.paper = p.id;
+          updateUIFromState();
+          scheduleRender();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function updateUIFromState() {
+      renderInkTabs();
+      renderInkSwatches();
+      renderPaperSwatches();
+
+      const paperObj = getPaperById(state.paper);
+      document.getElementById('paperIndicatorBox').style.backgroundColor = paperObj.hex;
+      document.getElementById('paperNameLabel').textContent = paperObj.name;
+
+      document.getElementById('patternModeSelect').value = state.pattern;
+      document.getElementById('sliderDotSize').value = state.dotSize;
+      document.getElementById('valDotSize').textContent = `${state.dotSize}px`;
+
+      document.getElementById('sliderRoughness').value = state.roughness;
+      document.getElementById('valRoughness').textContent = `${state.roughness}%`;
+
+      document.getElementById('sliderOffsetX').value = state.offsetX;
+      document.getElementById('valOffsetX').textContent = `${state.offsetX}px`;
+
+      document.getElementById('sliderOffsetY').value = state.offsetY;
+      document.getElementById('valOffsetY').textContent = `${state.offsetY}px`;
+
+      document.getElementById('sliderMargin').value = state.margin;
+      document.getElementById('valMargin').textContent = `${state.margin}%`;
+
+      document.getElementById('sliderCorner').value = state.corner;
+      document.getElementById('valCorner').textContent = `${state.corner}px`;
+
+      document.getElementById('sliderContrast').value = state.contrast;
+      document.getElementById('valContrast').textContent = `${state.contrast}%`;
+
+      document.getElementById('sliderBrightness').value = state.brightness;
+      document.getElementById('valBrightness').textContent = `${state.brightness}%`;
+
+      document.getElementById('sliderDensity').value = state.density;
+      document.getElementById('valDensity').textContent = `${state.density}%`;
+
+      document.getElementById('statusBadge').textContent = `INK: ${state.plates.map(p => p.toUpperCase()).join(' + ')} | ${state.pattern.toUpperCase()}`;
+
+      // Bottom tab visibility
+      document.getElementById('panelGrain').classList.toggle('hidden', state.activeBottomTab !== 'grain');
+      document.getElementById('panelPaper').classList.toggle('hidden', state.activeBottomTab !== 'paper');
+      document.getElementById('panelTone').classList.toggle('hidden', state.activeBottomTab !== 'tone');
+
+      document.getElementById('tabGrainBtn').classList.toggle('active-mode', state.activeBottomTab === 'grain');
+      document.getElementById('tabPaperBtn').classList.toggle('active-mode', state.activeBottomTab === 'paper');
+      document.getElementById('tabToneBtn').classList.toggle('active-mode', state.activeBottomTab === 'tone');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => {
+        t.classList.add('opacity-0');
+      }, 1800);
+    }
+
+    /********************************************************************
+     * Preset Grid Modal (Renders Live Miniature Cards like Screenshot 1)
+     ********************************************************************/
+    function renderPresetGallery() {
+      const grid = document.getElementById('presetGrid');
+      grid.innerHTML = '';
+
+      // Create a small thumbnail source canvas for rapid preview generation
+      const thumbSrc = document.createElement('canvas');
+      thumbSrc.width = 220;
+      thumbSrc.height = 155;
+      const tCtx = thumbSrc.getContext('2d');
+      tCtx.drawImage(sourceImage, 0, 0, thumbSrc.width, thumbSrc.height);
+
+      const allPresets = [... state.customPresets, ...BUILTIN_PRESETS];
+
+      // Save current state temporarily while rendering thumbnails
+      const backupState = JSON.parse(JSON.stringify(state));
+
+      allPresets.forEach((preset, index) => {
+        const card = document.createElement('div');
+        card.className = 'group cursor-pointer flex flex-col gap-2';
+
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.className = 'w-full aspect-[4/3] object-cover rounded-xs border border-[#2d2d2d] group-hover:border-white transition-colors shadow-md';
+
+        // Temporarily apply preset parameters
+        state.plates = [...preset.plates];
+        state.paper = preset.paper || 'cream';
+        state.pattern = preset.pattern || 'rosette';
+        state.dotSize = preset.dotSize || 4.5;
+        state.roughness = preset.roughness ?? 45;
+        state.offsetX = preset.offsetX ?? 4;
+        state.offsetY = preset.offsetY ?? -3;
+        state.margin = preset.margin !== undefined ? preset.margin : 12;
+        state.corner = preset.corner !== undefined ? preset.corner : 10;
+        state.isComparing = false;
+
+        renderPrintEffect(thumbSrc, thumbCanvas, 0.35);
+
+        const labelRow = document.createElement('div');
+        labelRow.className = 'flex items-center justify-between text-xs text-neutral-300 group-hover:text-white tracking-wide px-0.5';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = preset.name;
+        labelRow.appendChild(titleSpan);
+
+        if (preset.isCustom) {
+          const delBtn = document.createElement('button');
+          delBtn.textContent = '✕';
+          delBtn.className = 'text-neutral-500 hover:text-red-400 px-1';
+          delBtn.title = 'カスタムプリセットを削除';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.customPresets.splice(index, 1);
+            try {
+              localStorage.setItem('risoprint_custom_presets', JSON.stringify(state.customPresets));
+            } catch (err) {}
+            renderPresetGallery();
+          });
+          labelRow.appendChild(delBtn);
+        }
+
+        card.appendChild(thumbCanvas);
+        card.appendChild(labelRow);
+
+        card.addEventListener('click', () => {
+          Object.assign(state, backupState);
+          state.plates = [...preset.plates];
+          state.activePlateIndex = 0;
+          state.paper = preset.paper || 'cream';
+          state.pattern = preset.pattern || 'rosette';
+          state.dotSize = preset.dotSize || 4.5;
+          state.roughness = preset.roughness ?? 45;
+          state.offsetX = preset.offsetX ?? 4;
+          state.offsetY = preset.offsetY ?? -3;
+          state.margin = preset.margin !== undefined ? preset.margin : 0;
+          state.corner = preset.corner !== undefined ? preset.corner : 12;
+          state.presetName = preset.name;
+
+          document.getElementById('presetModal').classList.add('hidden');
+          document.getElementById('presetModal').classList.remove('flex');
+          updateUIFromState();
+          scheduleRender();
+          showToast(`PRESET: ${preset.name}`);
+        });
+
+        grid.appendChild(card);
+      });
+
+      // Restore active state
+      Object.assign(state, backupState);
+    }
+
+    /********************************************************************
+     * Event Listeners Setup
+     ********************************************************************/
+    function setupEvents() {
+      // File Input
+      const imageInput = document.getElementById('imageInput');
+      imageInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        loadFileToImage(file);
+        imageInput.value = '';
+      });
+
+      // Drag and drop image support
+      const dropZone = document.getElementById('dropZone');
+      const dropOverlay = document.getElementById('dropOverlay');
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove('opacity-0');
+      });
+      window.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget === null) {
+          dropOverlay.classList.add('opacity-0');
+        }
+      });
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.add('opacity-0');
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+          loadFileToImage(file);
+        }
+      });
+
+      // Reset to built-in sample image
+      document.getElementById('resetSampleBtn').addEventListener('click', () => {
+        setSourceImage(createSampleCanvas());
+        showToast('SAMPLE IMAGE RESTORED');
+      });
+
+      // Hold / Toggle Compare Button
+      const compareBtn = document.getElementById('compareBtn');
+      const startCompare = () => {
+        state.isComparing = true;
+        compareBtn.classList.add('active-mode');
+        scheduleRender();
+      };
+      const endCompare = () => {
+        if (!state.isComparing) return;
+        state.isComparing = false;
+        compareBtn.classList.remove('active-mode');
+        scheduleRender();
+      };
+      compareBtn.addEventListener('mousedown', startCompare);
+      window.addEventListener('mouseup', endCompare);
+      compareBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCompare(); });
+      window.addEventListener('touchend', endCompare);
+
+      // Auto Button [A]: Reverse / Rotate ink plate order
+      document.getElementById('autoDistributeBtn').addEventListener('click', () => {
+        state.plates.push(state.plates.shift());
+        updateUIFromState();
+        scheduleRender();
+        showToast('INK CHANNELS ROTATED');
+      });
+
+      // 🎲 RANDOM Button: Randomize inks & subtle misregistration
+      document.getElementById('diceRandomBtn').addEventListener('click', () => {
+        const count = Math.random() > 0.38 ? 3 : 2;
+        const shuffled = [...RISO_INKS].sort(() => Math.random() - 0.5);
+        state.plates = shuffled.slice(0, count).map(i => i.id);
+        state.activePlateIndex = 0;
+        state.offsetX = Math.floor(Math.random() * 14) - 7;
+        state.offsetY = Math.floor(Math.random() * 14) - 7;
+        updateUIFromState();
+        scheduleRender();
+        showToast(`RANDOM: ${state.plates.map(p => p.toUpperCase()).join(' + ')}`);
+      });
+
+      // 🎲 STYLE Button: Cycle screen pattern & dot scale
+      const patterns = ['rosette', 'halftone', 'grain', 'crosshatch'];
+      document.getElementById('diceStyleBtn').addEventListener('click', () => {
+        const nextIdx = (patterns.indexOf(state.pattern) + 1) % patterns.length;
+        state.pattern = patterns[nextIdx];
+        state.dotSize = [3.5, 4.5, 5.5, 6.5][Math.floor(Math.random() * 4)];
+        updateUIFromState();
+        scheduleRender();
+        showToast(`STYLE: ${state.pattern.toUpperCase()} (${state.dotSize}px)`);
+      });
+
+      // 🎲 FRAME Button: Cycle frame margin & paper stock
+      const margins = [0, 8, 12, 16];
+      document.getElementById('diceFrameBtn').addEventListener('click', () => {
+        const curIdx = margins.indexOf(state.margin);
+        state.margin = margins[(curIdx + 1) % margins.length];
+        state.corner = state.margin > 0 ? 12 : 0;
+        updateUIFromState();
+        scheduleRender();
+        showToast(state.margin > 0 ? `FRAME MARGIN: ${state.margin}%` : 'FULL BLEED (NO MARGIN)');
+      });
+
+      // Sliders & Selects
+      document.getElementById('patternModeSelect').addEventListener('change', (e) => {
+        state.pattern = e.target.value;
+        updateUIFromState();
+        scheduleRender();
+      });
+
+      const bindSlider = (id, key) => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', (e) => {
+          state[key] = parseFloat(e.target.value);
+          updateUIFromState();
+          scheduleRender();
+        });
+      };
+
+      bindSlider('sliderDotSize', 'dotSize');
+      bindSlider('sliderRoughness', 'roughness');
+      bindSlider('sliderOffsetX', 'offsetX');
+      bindSlider('sliderOffsetY', 'offsetY');
+      bindSlider('sliderMargin', 'margin');
+      bindSlider('sliderCorner', 'corner');
+      bindSlider('sliderContrast', 'contrast');
+      bindSlider('sliderBrightness', 'brightness');
+      bindSlider('sliderDensity', 'density');
+
+      document.getElementById('resetToneBtn').addEventListener('click', () => {
+        state.contrast = 115;
+        state.brightness = 100;
+        state.density = 92;
+        updateUIFromState();
+        scheduleRender();
+      });
+
+      // Bottom Mode Tabs (GRAIN / PAPER / TONE)
+      document.getElementById('tabGrainBtn').addEventListener('click', () => {
+        state.activeBottomTab = 'grain';
+        updateUIFromState();
+      });
+      document.getElementById('tabPaperBtn').addEventListener('click', () => {
+        state.activeBottomTab = 'paper';
+        updateUIFromState();
+      });
+      document.getElementById('tabToneBtn').addEventListener('click', () => {
+        state.activeBottomTab = 'tone';
+        updateUIFromState();
+      });
+
+      // Preset Modal Open / Close / Save
+      document.getElementById('openPresetBtn').addEventListener('click', () => {
+        renderPresetGallery();
+        const modal = document.getElementById('presetModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      });
+
+      document.getElementById('closePresetBtn').addEventListener('click', () => {
+        const modal = document.getElementById('presetModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      });
+
+      document.getElementById('saveCustomPresetBtn').addEventListener('click', () => {
+        const customName = `${state.plates.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ')} (${state.pattern})`;
+        const newPreset = {
+          name: customName,
+          plates: [...state.plates],
+          paper: state.paper,
+          pattern: state.pattern,
+          dotSize: state.dotSize,
+          roughness: state.roughness,
+          offsetX: state.offsetX,
+          offsetY: state.offsetY,
+          margin: state.margin,
+          corner: state.corner,
+          isCustom: true
         };
-
-        extractedPaletteContainer.appendChild(btn);
-      });
-    }
-
-    function updateColorSelectionUI() {
-      document.querySelectorAll('.preset-color-btn').forEach(btn => {
-        const isSelected = state.mode === 'solid' && btn.dataset.color.toUpperCase() === state.solidColor.toUpperCase();
-        btn.classList.toggle('border-blue-500', isSelected);
-        btn.classList.toggle('ring-2', isSelected);
-        btn.classList.toggle('ring-blue-500/40', isSelected);
-      });
-    }
-
-    function resetToEmpty() {
-      state.photos = [];
-      state.currentIndex = 0;
-      emptyState.classList.remove('hidden');
-      thumbnailBar.classList.add('hidden');
-      imageInfoBadge.classList.add('hidden');
-      topRightOverlayBtns.classList.add('hidden');
-      exportBtn.disabled = true;
-      exportBtnText.textContent = '一括保存';
-      const ctx = previewCanvas.getContext('2d');
-      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-    }
-
-    clearAllBtn.addEventListener('click', resetToEmpty);
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.dataset.tab;
-        document.querySelectorAll('.tab-btn').forEach(b => {
-          const active = b.dataset.tab === target;
-          b.classList.toggle('border-blue-500', active);
-          b.classList.toggle('text-blue-400', active);
-          b.classList.toggle('bg-gray-900/60', active);
-          b.classList.toggle('border-transparent', !active);
-          b.classList.toggle('text-gray-400', !active);
-        });
-        document.querySelectorAll('.tab-panel').forEach(panel => {
-          panel.classList.toggle('hidden', panel.id !== `tab-${target}`);
-        });
-
-        if (target === 'blur') {
-          state.mode = 'blur';
-          renderPreview();
-        }
-      });
-    });
-
-    document.querySelectorAll('.preset-color-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.mode = 'solid';
-        state.solidColor = btn.dataset.color;
-        updateColorSelectionUI();
-        renderExtractedPalette();
-        renderPreview();
-      });
-    });
-
-    document.getElementById('customColorPicker').addEventListener('input', (e) => {
-      state.mode = 'solid';
-      state.solidColor = e.target.value;
-      updateColorSelectionUI();
-      renderExtractedPalette();
-      renderPreview();
-    });
-
-    document.getElementById('autoPerPhotoToggle').addEventListener('change', (e) => {
-      state.autoPerPhotoPalette = e.target.checked;
-      renderPreview();
-    });
-
-    document.getElementById('borderWidthSlider').addEventListener('input', (e) => {
-      state.borderPercent = parseFloat(e.target.value);
-      document.getElementById('borderWidthLabel').textContent = `${state.borderPercent}%`;
-      renderPreview();
-    });
-
-    document.getElementById('blurAmountSlider').addEventListener('input', (e) => {
-      state.mode = 'blur';
-      state.blurAmount = parseInt(e.target.value, 10);
-      document.getElementById('blurAmountLabel').textContent = `${state.blurAmount}px`;
-      renderPreview();
-    });
-
-    document.getElementById('blurBrightSlider').addEventListener('input', (e) => {
-      state.mode = 'blur';
-      state.blurBrightness = parseInt(e.target.value, 10);
-      document.getElementById('blurBrightLabel').textContent = `${state.blurBrightness}%`;
-      renderPreview();
-    });
-
-    document.getElementById('radiusSlider').addEventListener('input', (e) => {
-      state.cornerRadius = parseFloat(e.target.value);
-      document.getElementById('radiusLabel').textContent = `${state.radiusLabel}px`;
-      renderPreview();
-    });
-
-    document.getElementById('shadowSlider').addEventListener('input', (e) => {
-      state.shadowStrength = parseInt(e.target.value, 10);
-      document.getElementById('shadowLabel').textContent = `${state.shadowStrength}%`;
-      renderPreview();
-    });
-
-    document.querySelectorAll('.sizing-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.sizingRule = btn.dataset.sizing;
-        document.querySelectorAll('.sizing-btn').forEach(b => {
-          const active = b.dataset.sizing === state.sizingRule;
-          b.classList.toggle('border-blue-500', active);
-          b.classList.toggle('bg-blue-950/50', active);
-          b.classList.toggle('text-blue-300', active);
-          b.classList.toggle('border-gray-700', !active);
-          b.classList.toggle('bg-gray-900/50', !active);
-          b.classList.toggle('text-gray-400', !active);
-        });
-        renderPreview();
-      });
-    });
-
-    const exportModal = document.getElementById('exportModal');
-    const exportProgressArea = document.getElementById('exportProgressArea');
-    const exportActionsArea = document.getElementById('exportActionsArea');
-    const exportProgressBar = document.getElementById('exportProgressBar');
-    const exportProgressCount = document.getElementById('exportProgressCount');
-
-    exportBtn.addEventListener('click', () => {
-      if (!state.photos.length) return;
-      document.getElementById('modalPhotoCount').textContent = state.photos.length;
-      exportProgressArea.classList.add('hidden');
-      exportActionsArea.classList.remove('hidden');
-      exportModal.classList.remove('hidden');
-    });
-
-    document.getElementById('closeModalBtn').addEventListener('click', () => {
-      exportModal.classList.add('hidden');
-    });
-
-    async function generateAllBlobs() {
-      exportActionsArea.classList.add('hidden');
-      exportProgressArea.classList.remove('hidden');
-      
-      const workCanvas = document.createElement('canvas');
-      const results = [];
-
-      for (let i = 0; i < state.photos.length; i++) {
-        const photo = state.photos[i];
-        exportProgressCount.textContent = `${i + 1} / ${state.photos.length}`;
-        exportProgressBar.style.width = `${Math.round(((i + 1) / state.photos.length) * 100)}%`;
-
-        await new Promise(r => setTimeout(r, 30));
-
-        renderPhotoWithFrame(workCanvas, photo, null);
-        const blob = await new Promise(resolve => workCanvas.toBlob(resolve, 'image/jpeg', 0.95));
-        const filename = `${photo.name}_framed.jpg`;
-        results.push({ blob, filename });
-      }
-      return results;
-    }
-
-    document.getElementById('shareAllBtn').addEventListener('click', async () => {
-      const items = await generateAllBlobs();
-      const files = items.map(item => new File([item.blob], item.filename, { type: 'image/jpeg' }));
-
-      if (navigator.canShare && navigator.canShare({ files })) {
+        state.customPresets.unshift(newPreset);
         try {
-          await navigator.share({ files, title: 'フチ付き写真' });
-          exportModal.classList.add('hidden');
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') {
-            exportModal.classList.add('hidden');
-            return;
-          }
-        }
-      }
-      triggerIndividualDownloads(items);
-      exportModal.classList.add('hidden');
-    });
+          localStorage.setItem('risoprint_custom_presets', JSON.stringify(state.customPresets));
+        } catch (err) {}
+        renderPresetGallery();
+        showToast('☆ PRESET SAVED');
+      });
 
-    document.getElementById('downloadIndividualBtn').addEventListener('click', async () => {
-      const items = await generateAllBlobs();
-      triggerIndividualDownloads(items);
-      exportModal.classList.add('hidden');
-    });
-
-    function triggerIndividualDownloads(items) {
-      items.forEach((item, index) => {
-        setTimeout(() => {
-          const url = URL.createObjectURL(item.blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = item.filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-        }, index * 250);
+      // Settings & High-Res Export
+      const settingsModal = document.getElementById('settingsModal');
+      document.getElementById('settingsBtn').addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+        settingsModal.classList.add('flex');
+      });
+      document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        settingsModal.classList.remove('flex');
+      });
+      document.getElementById('confirmExportBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        settingsModal.classList.remove('flex');
+        triggerHighResExport();
+      });
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        triggerHighResExport();
       });
     }
 
-    document.getElementById('downloadZipBtn').addEventListener('click', data => {});
+    function loadFileToImage(file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          setSourceImage(img);
+          showToast('IMAGE LOADED');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /********************************************************************
+     * High-Resolution Export Pipeline (Supports up to 24MP / 6000x4000px)
+     ********************************************************************/
+    function triggerHighResExport() {
+      if (!sourceImage) return;
+      const indicator = document.getElementById('processingIndicator');
+      indicator.classList.remove('hidden');
+      showToast('RENDERING HIGH-RES PRINT...');
+
+      setTimeout(() => {
+        try {
+          const scaleOption = document.querySelector('input[name="exportScale"]:checked')?.value || 'original';
+          const format = document.getElementById('exportFormatSelect')?.value || 'image/jpeg';
+
+          const origW = sourceImage.width || sourceImage.naturalWidth;
+          const origH = sourceImage.height || sourceImage.naturalHeight;
+
+          // Cap max dimension at 6000px (24MP class) or 2048px for SNS
+          const maxTargetDim = scaleOption === 'sns' ? 2048 : 6000;
+          const exportRatio = Math.min(1, maxTargetDim / Math.max(origW, origH));
+          const expW = Math.max(1, Math.round(origW * exportRatio));
+          const expH = Math.max(1, Math.round(origH * exportRatio));
+
+          const offSrc = document.createElement('canvas');
+          offSrc.width = expW;
+          offSrc.height = expH;
+          offSrc.getContext('2d').drawImage(sourceImage, 0, 0, expW, expH);
+
+          const offOut = document.createElement('canvas');
+          const resScaleFactor = Math.max(expW, expH) / Math.max(workCanvas.width, workCanvas.height);
+
+          renderPrintEffect(offSrc, offOut, resScaleFactor);
+
+          const ext = format === 'image/png' ? 'png' : 'jpg';
+          offOut.toBlob((blob) => {
+            indicator.classList.add('hidden');
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RisoPrint_${state.plates.join('-')}_${Date.now()}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`EXPORTED (${expW}×${expH}px)`);
+          }, format, 0.95);
+        } catch (err) {
+          console.error(err);
+          indicator.classList.add('hidden');
+          showToast('EXPORT ERROR');
+        }
+      }, 60);
+    }
+
+    // Initialize App on Load
+    window.onload = function () {
+      setupEvents();
+      setSourceImage(createSampleCanvas());
+      updateUIFromState();
+    };
   </script>
 </body>
 </html>
+```
