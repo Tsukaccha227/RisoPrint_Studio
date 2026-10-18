@@ -9,9 +9,15 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23121212'/%3E%3Crect x='48' y='48' width='416' height='416' rx='80' fill='%231e1e1e' stroke='%23333' stroke-width='8'/%3E%3Ccircle cx='216' cy='236' r='96' fill='%23ff48b0' fill-opacity='0.85'/%3E%3Ccircle cx='296' cy='276' r='96' fill='%230078bf' fill-opacity='0.85'/%3E%3Ccircle cx='256' cy='256' r='40' fill='%23ffe800' fill-opacity='0.9'/%3E%3C/svg%3E",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
