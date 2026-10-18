@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="フチ付け">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#111827">
+  <title>PhotoFrame Studio - 一括写真フチ付けアプリ</title>
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; user-select: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
+      overscroll-behavior-y: none;
+    }
+    .bg-checkerboard {
+      background-color: #18181b;
+      background-image: 
+        linear-gradient(45deg, #27272a 25%, transparent 25%), 
+        linear-gradient(-45deg, #27272a 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #27272a 75%), 
+        linear-gradient(-45deg, transparent 75%, #27272a 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type="range"] { accent-color: #3b82f6; }
+
+    .workspace-layout { display: flex; flex-direction: column; }
+    .control-sidebar { max-height: 45dvh; width: 100%; border-top: 1px solid #1f2937; }
+
+    @media (orientation: landscape), (min-width: 640px) {
+      .workspace-layout { flex-direction: row; }
+      .control-sidebar { max-height: none; height: 100%; width: 360px; border-top: none; border-left: 1px solid #1f2937; }
+    }
+    @media (min-width: 960px) {
+      .control-sidebar { width: 400px; }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-dvh flex flex-col overflow-hidden">
+
+  <input id="fileInput" type="file" accept="image/*" multiple class="hidden">
+
+  <header class="bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-2 flex items-center justify-between shrink-0 z-20">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 rounded-md bg-white p-1 flex items-center justify-center shadow">
+        <div class="w-full h-full bg-gray-900 rounded-xs"></div>
+      </div>
+      <h1 class="font-bold text-sm sm:text-base tracking-tight">PhotoFrame <span class="text-[11px] font-normal text-blue-400 bg-blue-950/80 border border-blue-800 px-1.5 py-0.5 rounded">Studio</span></h1>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="installAppBtn" type="button" class="hidden bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow">
+        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+        <span>インストール</span>
+      </button>
+
+      <button id="exportBtn" type="button" disabled class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 active:scale-95 transition text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg shadow-blue-900/20">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span id="exportBtnText">一括保存</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace-layout flex-1 min-h-0 min-w-0 overflow-hidden">
+
+    <main class="flex-1 flex flex-col min-h-0 min-w-0 relative bg-checkerboard">
+      
+      <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center p-6 z-20 bg-gray-950/90 backdrop-blur-sm">
+        <button id="mainSelectPhotoBtn" type="button" class="w-full max-w-md border-2 border-dashed border-gray-700 hover:border-blue-500 active:scale-[0.99] rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition bg-gray-900/60 hover:bg-gray-900">
+          <div class="w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center mb-3 text-blue-400">
+            <i data-lucide="images" class="w-7 h-7"></i>
+          </div>
+          <p class="text-base font-bold text-white mb-1">写真をタップして選択（複数可）</p>
+          <p class="text-xs text-gray-400 mb-4">元の比率を保ったまま、等しい距離で綺麗なフチをつけます</p>
+          <span class="bg-blue-600 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow">カメラロール・フォルダから選ぶ</span>
+        </button>
+      </div>
+
+      <div id="previewContainer" class="flex-1 flex items-center justify-center p-4 sm:p-6 min-h-0 min-w-0 relative overflow-hidden">
+        <canvas id="previewCanvas" class="max-w-full max-h-full object-contain shadow-2xl transition-opacity duration-150"></canvas>
+        
+        <div id="imageInfoBadge" class="hidden absolute top-2.5 left-2.5 bg-gray-900/80 backdrop-blur border border-gray-700/80 text-[11px] text-gray-300 px-2.5 py-1 rounded-md flex items-center gap-2">
+          <span id="infoResolution">-- × --</span>
+          <span class="text-gray-600">|</span>
+          <span id="infoIndex">1 / 1</span>
+        </div>
+
+        <div id="topRightOverlayBtns" class="hidden absolute top-2.5 right-2.5 flex items-center gap-1.5">
+          <button id="addMorePhotoBtn" type="button" class="bg-gray-900/80 hover:bg-gray-800 text-blue-400 backdrop-blur border border-gray-700/80 text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>追加</span>
+          </button>
+          <button id="clearAllBtn" type="button" class="bg-gray-900/80 hover:bg-red-950/90 text-gray-400 hover:text-red-300 backdrop-blur border border-gray-700/80 text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>すべてクリア</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="thumbnailBar" class="hidden bg-gray-900/95 border-t border-gray-800 px-3 py-1.5 shrink-0">
+        <div id="thumbnailList" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5"></div>
+      </div>
+    </main>
+
+    <section class="control-sidebar bg-gray-900 shrink-0 z-20 flex flex-col">
+      <div class="grid grid-cols-3 border-b border-gray-800 text-xs font-semibold bg-gray-950/50 shrink-0">
+        <button data-tab="color" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-blue-500 text-blue-400 bg-gray-900/60">
+          <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+          <span>色・抽出</span>
+        </button>
+        <button data-tab="blur" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <span>写真ぼかし</span>
+        </button>
+        <button data-tab="size" type="button" class="tab-btn py-2.5 flex items-center justify-center gap-1 border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+          <span>比率・角・影</span>
+        </button>
+      </div>
+
+      <div class="p-3.5 overflow-y-auto space-y-3.5 text-xs flex-1">
+        <div class="bg-gray-800/60 border border-gray-800 rounded-xl p-3">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-blue-400"></i>
+              フチの太さ（等距離）
+            </span>
+            <span id="borderWidthLabel" class="font-mono text-blue-400 font-bold">8%</span>
+          </div>
+          <input id="borderWidthSlider" type="range" min="0" max="35" step="0.5" value="8" class="w-full h-2 bg-gray-700 rounded-lg cursor-pointer">
+        </div>
+
+        <div id="tab-color" class="tab-panel space-y-3.5">
+          <div class="space-y-2">
+            <span class="text-gray-400 font-medium block">定番カラー & 自由選択</span>
+            <div class="flex items-center justify-between bg-gray-950/50 border border-gray-800/80 rounded-xl p-2.5">
+              <button data-color="#FFFFFF" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-white border-2 border-blue-500 shadow ring-2 ring-blue-500/40" title="白 (#FFFFFF)"></button>
+              <button data-color="#F8FAFC" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-slate-100 border border-gray-600" title="オフホワイト"></button>
+              <button data-color="#E5E5E5" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-neutral-200 border border-gray-600" title="ライトグレー"></button>
+              <button data-color="#18181B" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-zinc-900 border border-gray-600" title="ダークグレー"></button>
+              <button data-color="#000000" type="button" class="preset-color-btn w-7 h-7 rounded-full bg-black border border-gray-600" title="黒 (#000000)"></button>
+              
+              <label class="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 via-yellow-400 to-cyan-400 p-0.5 cursor-pointer shadow">
+                <span class="w-full h-full rounded-full bg-gray-900 flex items-center justify-center">
+                  <i data-lucide="pipette" class="w-3.5 h-3.5 text-white"></i>
+                </span>
+                <input id="customColorPicker" type="color" value="#ffffff" class="sr-only">
+              </label>
+            </div>
+          </div>
+
+          <div class="bg-gray-950/60 border border-gray-800/80 rounded-xl p-3 space-y-2.5">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-gray-300 font-medium flex items-center gap-1.5">
+                <i data-lucide="wand-2" class="w-3.5 h-3.5 text-amber-400"></i>
+                写真から抽出した5色
+              </span>
+            </div>
+            
+            <div id="extractedPaletteContainer" class="grid grid-cols-5 gap-1.5 pt-0.5">
+              <p class="col-span-5 text-gray-500 text-[11px] py-1">写真を読み込むと自動で5色を抽出します</p>
+            </div>
+
+            <label class="flex items-center gap-2 text-[11px] text-gray-400 cursor-pointer pt-1 border-t border-gray-800/80">
+              <input id="autoPerPhotoToggle" type="checkbox" checked class="rounded bg-gray-800 border-gray-700 text-blue-500 focus:ring-0">
+              <span>一括保存時も各写真ごとの抽出色を使う</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="tab-blur" class="tab-panel hidden space-y-3">
+          <div class="flex items-center justify-between bg-blue-950/40 border border-blue-800/50 rounded-xl px-3 py-2.5">
+            <div>
+              <p class="font-semibold text-blue-200">背景ぼかしフチモード</p>
+              <p class="text-[11px] text-blue-300/80">写真自身を拡大してぼかした背景をフチにします</p>
+            </div>
+            <span class="bg-blue-600 text-white font-semibold px-2.5 py-1 rounded-lg text-[11px] shrink-0">適用中</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
+              <div class="flex justify-between mb-1.5">
+                <span class="text-gray-300">ぼかしの強さ</span>
+                <span id="blurAmountLabel" class="font-mono text-blue-400">35px</span>
+              </div>
+              <input id="blurAmountSlider" type="range" min="5" max="100" value="35" class="w-full h-1.5 bg-gray-700 rounded-lg">
+            </div>
+
+            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
+              <div class="flex justify-between mb-1.5">
+                <span class="text-gray-300">フチの明るさ</span>
+                <span id="blurBrightLabel" class="font-mono text-blue-400">100%</span>
+              </div>
+              <input id="blurBrightSlider" type="range" min="40" max="160" value="100" class="w-full h-1.5 bg-gray-700 rounded-lg">
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-size" class="tab-panel hidden space-y-3">
+          <div class="bg-gray-800/50 p-2.5 rounded-xl border border-gray-800 space-y-1.5">
+            <span class="text-gray-300 font-medium block">比率と距離のルール</span>
+            <div class="grid grid-cols-1 gap-2 pt-0.5">
+              <button data-sizing="equal-margin" type="button" class="sizing-btn py-2 px-3 rounded-lg border border-blue-500 bg-blue-950/50 text-blue-300 font-medium text-left">
+                <div class="font-bold text-xs">上下左右が完全等幅</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">4辺すべて全く同じピクセル距離でフチを追加</div>
+              </button>
+              <button data-sizing="exact-aspect" type="button" class="sizing-btn py-2 px-3 rounded-lg border border-gray-700 bg-gray-900/50 text-gray-400 font-medium text-left">
+                <div class="font-bold text-xs">外枠も同アスペクト比</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">完成画像の縦横比も元写真と100%同一に保つ</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
+              <div class="flex justify-between mb-1.5">
+                <span class="text-gray-300">写真の角丸</span>
+                <span id="radiusLabel" class="font-mono text-blue-400">0%</span>
+              </div>
+              <input id="radiusSlider" type="range" min="0" max="20" step="0.5" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg">
+            </div>
+
+            <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-800">
+              <div class="flex justify-between mb-1.5">
+                <span class="text-gray-300">写真の影 (立体感)</span>
+                <span id="shadowLabel" class="font-mono text-blue-400">0%</span>
+              </div>
+              <input id="shadowSlider" type="range" min="0" max="100" step="5" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+          <span>画像の書き出し・保存</span>
+        </h3>
+        <button id="closeModalBtn" type="button" class="text-gray-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="exportProgressArea" class="hidden space-y-2 py-2">
+        <div class="flex justify-between text-xs text-gray-300">
+          <span id="exportProgressText">高画質で処理中...</span>
+          <span id="exportProgressCount">0 / 0</span>
+        </div>
+        <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div id="exportProgressBar" class="h-full bg-blue-500 transition-all duration-200" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div id="exportActionsArea" class="space-y-2.5">
+        <p class="text-xs text-gray-400">元の高解像度を維持したまま書き出します（<span id="modalPhotoCount">1</span>枚）</p>
+        
+        <button id="shareAllBtn" type="button" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition text-sm">
+          <i data-lucide="share" class="w-4 h-4"></i>
+          <span>スマホの写真フォルダに保存 / 共有</span>
+        </button>
+
+        <button id="downloadIndividualBtn" type="button" class="w-full bg-gray-800 hover:bg-gray-700 active:scale-[0.99] text-gray-100 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700 transition text-xs">
+          <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+          <span>1枚ずつそのままダウンロード</span>
+        </button>
+
+        <button id="downloadZipBtn" type="button" class="w-full bg-gray-800 hover:bg-gray-700 active:scale-[0.99] text-gray-100 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-gray-700 transition text-xs">
+          <i data-lucide="folder-archive" class="w-4 h-4 text-amber-400"></i>
+          <span>ZIPファイルにまとめて一括保存</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    (function setupPWA() {
+      if (location.pathname.startsWith('/photo_frame')) {
+        location.replace(location.href.replace('/photo_frame', '/Photo_frame'));
+        return;
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+      }
+
+      let deferredPrompt = null;
+      const installBtn = document.getElementById('installAppBtn');
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.classList.remove('hidden');
+      });
+
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.classList.add('hidden');
+      });
+    })();
+
+    const state = {
+      photos: [],
+      currentIndex: 0,
+      mode: 'solid',
+      solidColor: '#FFFFFF',
+      extractedIndex: 0,
+      autoPerPhotoPalette: true,
+      borderPercent: 8,
+      sizingRule: 'equal-margin',
+      blurAmount: 35,
+      blurBrightness: 100,
+      cornerRadius: 0,
+      shadowStrength: 0
+    };
+
+    const fileInput = document.getElementById('fileInput');
+    const mainSelectPhotoBtn = document.getElementById('mainSelectPhotoBtn');
+    const addMorePhotoBtn = document.getElementById('addMorePhotoBtn');
+    const emptyState = document.getElementById('emptyState');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const thumbnailBar = document.getElementById('thumbnailBar');
+    const thumbnailList = document.getElementById('thumbnailList');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportBtnText = document.getElementById('exportBtnText');
+    const imageInfoBadge = document.getElementById('imageInfoBadge');
+    const infoResolution = document.getElementById('infoResolution');
+    const infoIndex = document.getElementById('infoIndex');
+    const topRightOverlayBtns = document.getElementById('topRightOverlayBtns');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const extractedPaletteContainer = document.getElementById('extractedPaletteContainer');
+
+    mainSelectPhotoBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      fileInput.click();
+    });
+
+    addMorePhotoBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+          const img = await loadImage(file);
+          const palette = extractFiveColors(img);
+          state.photos.push({
+            id: String(Date.now() + Math.random()),
+            file,
+            name: file.name.replace(/\.[^/.]+$/, ''),
+            img,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            palette
+          });
+        } catch (err) {
+          console.error('画像読み込みエラー:', err);
+        }
+      }
+
+      if (state.photos.length > 0) {
+        emptyState.classList.add('hidden');
+        thumbnailBar.classList.remove('hidden');
+        imageInfoBadge.classList.remove('hidden');
+        topRightOverlayBtns.classList.remove('hidden');
+        exportBtn.disabled = false;
+        exportBtnText.textContent = state.photos.length > 1 ? `一括保存 (${state.photos.length}枚)` : '保存する';
+        
+        renderThumbnails();
+        renderExtractedPalette();
+        renderPreview();
+      }
+    });
+
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    function extractFiveColors(img) {
+      const sampleSize = 64;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = sampleSize;
+      canvas.height = sampleSize;
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+      
+      const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+      const pixels = [];
+      for (let i = 0; i < data.length; i += 16) {
+        if (data[i + 3] < 128) continue;
+        pixels.push([data[i], data[i + 1], data[i + 2]]);
+      }
+      if (pixels.length < 5) {
+        return ['#FFFFFF', '#E2E8F0', '#94A3B8', '#475569', '#1E293B'];
+      }
+
+      const k = 5;
+      const centroids = [pixels[Math.floor(pixels.length / 2)]];
+      while (centroids.length < k) {
+        let farthestPixel = pixels[0];
+        let maxDist = -1;
+        for (const p of pixels) {
+          let minDistToCentroid = Infinity;
+          for (const c of centroids) {
+            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
+            if (d < minDistToCentroid) minDistToCentroid = d;
+          }
+          if (minDistToCentroid > maxDist) {
+            maxDist = minDistToCentroid;
+            farthestPixel = p;
+          }
+        }
+        centroids.push([...farthestPixel]);
+      }
+
+      let clusters = Array.from({ length: k }, () => []);
+      for (let iter = 0; iter < 8; iter++) {
+        clusters = Array.from({ length: k }, () => []);
+        for (const p of pixels) {
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < k; i++) {
+            const c = centroids[i];
+            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
+            if (d < bestDist) {
+              bestDist = d;
+              bestIdx = i;
+            }
+          }
+          clusters[bestIdx].push(p);
+        }
+        for (let i = 0; i < k; i++) {
+          if (clusters[i].length === 0) continue;
+          let r = 0, g = 0, b = 0;
+          for (const p of clusters[i]) { r += p[0]; g += p[1]; b += p[2]; }
+          centroids[i] = [
+            Math.round(r / clusters[i].length),
+            Math.round(g / clusters[i].length),
+            Math.round(b / clusters[i].length)
+          ];
+        }
+      }
+
+      return centroids
+        .map((c, idx) => ({ rgb: c, count: clusters[idx].length }))
+        .sort((a, b) => b.count - a.count)
+        .map(item => rgbToHex(item.rgb[0], item.rgb[1], item.rgb[2]));
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    function renderPhotoWithFrame(targetCanvas, photoObj, maxPreviewDimension = null) {
+      const img = photoObj.img;
+      const origW = photoObj.width;
+      const origH = photoObj.height;
+
+      let scale = 1;
+      if (maxPreviewDimension) {
+        const maxSide = Math.max(origW, origH);
+        if (maxSide > maxPreviewDimension) {
+          scale = maxPreviewDimension / maxSide;
+        }
+      }
+
+      const innerW = Math.round(origW * scale);
+      const innerH = Math.round(origH * scale);
+      const minSide = Math.min(innerW, innerH);
+
+      const ratio = state.borderPercent / 100;
+      let padX, padY;
+
+      if (state.sizingRule === 'equal-margin') {
+        const equalPad = Math.round(minSide * ratio);
+        padX = equalPad;
+        padY = equalPad;
+      } else {
+        padX = Math.round(innerW * ratio);
+        padY = Math.round(innerH * ratio);
+      }
+
+      const totalW = innerW + padX * 2;
+      const totalH = innerH + padY * 2;
+
+      targetCanvas.width = totalW;
+      targetCanvas.height = totalH;
+      const ctx = targetCanvas.getContext('2d');
+      ctx.save();
+
+      if (state.mode === 'blur') {
+        const blurPx = Math.max(2, Math.round((state.blurAmount / 1000) * Math.max(totalW, totalH)));
+        const expand = blurPx * 3;
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(0, 0, totalW, totalH);
+
+        ctx.save();
+        ctx.filter = `blur(${blurPx}px) brightness(${state.blurBrightness}%) saturate(115%)`;
+        ctx.drawImage(img, -expand, -expand, totalW + expand * 2, totalH + expand * 2);
+        ctx.restore();
+      } else {
+        let fillColor = state.solidColor;
+        if (state.mode === 'extracted') {
+          if (state.autoPerPhotoPalette) {
+            fillColor = photoObj.palette[state.extractedIndex] || '#FFFFFF';
+          } else {
+            const currentPhoto = state.photos[state.currentIndex] || photoObj;
+            fillColor = currentPhoto.palette[state.extractedIndex] || '#FFFFFF';
+          }
+        }
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(0, 0, totalW, totalH);
+      }
+
+      const radiusPx = Math.round((state.cornerRadius / 100) * (minSide / 2));
+
+      if (state.shadowStrength > 0 && state.borderPercent > 0) {
+        ctx.save();
+        const shadowBlur = Math.round((state.shadowStrength / 100) * (minSide * 0.08));
+        const shadowOffsetY = Math.round(shadowBlur * 0.35);
+        ctx.shadowColor = `rgba(0, 0, 0, ${(state.shadowStrength / 100) * 0.55})`;
+        ctx.shadowBlur = shadowBlur;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = shadowOffsetY;
+
+        drawRoundedRectPath(ctx, padX, padY, innerW, innerH, radiusPx);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.save();
+      if (radiusPx > 0) {
+        drawRoundedRectPath(ctx, padX, padY, innerW, innerH, radiusPx);
+        ctx.clip();
+      }
+      ctx.drawImage(img, padX, padY, innerW, innerH);
+      ctx.restore();
+
+      ctx.restore();
+      return { totalW: origW + Math.round((padX / scale) * 2), totalH: origH + Math.round((padY / scale) * 2) };
+    }
+
+    function drawRoundedRectPath(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + w, y, x + w, y + h, radius);
+      ctx.arcTo(x + w, y + h, x, y + h, radius);
+      ctx.arcTo(x, y + h, x, y, radius);
+      ctx.arcTo(x, y, x + w, y, radius);
+      ctx.closePath();
+    }
+
+    function renderPreview() {
+      if (!state.photos.length) return;
+      const current = state.photos[state.currentIndex];
+      
+      const containerW = previewContainer.clientWidth - 32;
+      const containerH = previewContainer.clientHeight - 32;
+      const maxDim = Math.max(containerW, containerH, 1000);
+
+      const info = renderPhotoWithFrame(previewCanvas, current, maxDim);
+      infoResolution.textContent = `出力: ${info.totalW} × ${info.totalH}px`;
+      infoIndex.textContent = `${state.currentIndex + 1} / ${state.photos.length}枚目`;
+    }
+
+    window.addEventListener('resize', () => {
+      if (state.photos.length > 0) renderPreview();
+    });
+
+    function renderThumbnails() {
+      thumbnailList.innerHTML = '';
+      state.photos.forEach((photo, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `relative shrink-0 w-12 h-12 rounded-lg overflow-hidden cursor-pointer border-2 transition ${
+          idx === state.currentIndex ? 'border-blue-500 scale-105 shadow-md' : 'border-gray-700 opacity-60 hover:opacity-100'
+        }`;
+        
+        const thumbImg = document.createElement('img');
+        thumbImg.src = photo.img.src;
+        thumbImg.className = 'w-full h-full object-cover';
+        wrapper.appendChild(thumbImg);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.innerHTML = '×';
+        delBtn.className = 'absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white text-[10px] leading-none flex items-center justify-center hover:bg-red-600';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          state.photos.splice(idx, 1);
+          if (state.currentIndex >= state.photos.length) {
+            state.currentIndex = Math.max(0, state.photos.length - 1);
+          }
+          if (state.photos.length === 0) {
+            resetToEmpty();
+          } else {
+            exportBtnText.textContent = state.photos.length > 1 ? `一括保存 (${state.photos.length}枚)` : '保存する';
+            renderThumbnails();
+            renderExtractedPalette();
+            renderPreview();
+          }
+        };
+        wrapper.appendChild(delBtn);
+
+        wrapper.onclick = () => {
+          state.currentIndex = idx;
+          renderThumbnails();
+          renderExtractedPalette();
+          renderPreview();
+        };
+
+        thumbnailList.appendChild(wrapper);
+      });
+    }
+
+    function renderExtractedPalette() {
+      if (!state.photos.length) return;
+      const current = state.photos[state.currentIndex];
+      extractedPaletteContainer.innerHTML = '';
+
+      current.palette.forEach((hex, idx) => {
+        const isSelected = state.mode === 'extracted' && state.extractedIndex === idx;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `h-10 rounded-lg border flex items-center justify-center transition relative ${
+          isSelected ? 'border-blue-400 ring-2 ring-blue-500/50 scale-105 z-10' : 'border-gray-700 hover:scale-102'
+        }`;
+        btn.style.backgroundColor = hex;
+        btn.title = `抽出カラー ${idx + 1}: ${hex}`;
+
+        const label = document.createElement('span');
+        label.className = 'text-[9px] font-mono px-1 py-0.5 rounded bg-black/55 text-white';
+        label.textContent = hex;
+        btn.appendChild(label);
+
+        btn.onclick = () => {
+          state.mode = 'extracted';
+          state.extractedIndex = idx;
+          updateColorSelectionUI();
+          renderExtractedPalette();
+          renderPreview();
+        };
+
+        extractedPaletteContainer.appendChild(btn);
+      });
+    }
+
+    function updateColorSelectionUI() {
+      document.querySelectorAll('.preset-color-btn').forEach(btn => {
+        const isSelected = state.mode === 'solid' && btn.dataset.color.toUpperCase() === state.solidColor.toUpperCase();
+        btn.classList.toggle('border-blue-500', isSelected);
+        btn.classList.toggle('ring-2', isSelected);
+        btn.classList.toggle('ring-blue-500/40', isSelected);
+      });
+    }
+
+    function resetToEmpty() {
+      state.photos = [];
+      state.currentIndex = 0;
+      emptyState.classList.remove('hidden');
+      thumbnailBar.classList.add('hidden');
+      imageInfoBadge.classList.add('hidden');
+      topRightOverlayBtns.classList.add('hidden');
+      exportBtn.disabled = true;
+      exportBtnText.textContent = '一括保存';
+      const ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+    }
+
+    clearAllBtn.addEventListener('click', resetToEmpty);
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          const active = b.dataset.tab === target;
+          b.classList.toggle('border-blue-500', active);
+          b.classList.toggle('text-blue-400', active);
+          b.classList.toggle('bg-gray-900/60', active);
+          b.classList.toggle('border-transparent', !active);
+          b.classList.toggle('text-gray-400', !active);
+        });
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+          panel.classList.toggle('hidden', panel.id !== `tab-${target}`);
+        });
+
+        if (target === 'blur') {
+          state.mode = 'blur';
+          renderPreview();
+        }
+      });
+    });
+
+    document.querySelectorAll('.preset-color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.mode = 'solid';
+        state.solidColor = btn.dataset.color;
+        updateColorSelectionUI();
+        renderExtractedPalette();
+        renderPreview();
+      });
+    });
+
+    document.getElementById('customColorPicker').addEventListener('input', (e) => {
+      state.mode = 'solid';
+      state.solidColor = e.target.value;
+      updateColorSelectionUI();
+      renderExtractedPalette();
+      renderPreview();
+    });
+
+    document.getElementById('autoPerPhotoToggle').addEventListener('change', (e) => {
+      state.autoPerPhotoPalette = e.target.checked;
+      renderPreview();
+    });
+
+    document.getElementById('borderWidthSlider').addEventListener('input', (e) => {
+      state.borderPercent = parseFloat(e.target.value);
+      document.getElementById('borderWidthLabel').textContent = `${state.borderPercent}%`;
+      renderPreview();
+    });
+
+    document.getElementById('blurAmountSlider').addEventListener('input', (e) => {
+      state.mode = 'blur';
+      state.blurAmount = parseInt(e.target.value, 10);
+      document.getElementById('blurAmountLabel').textContent = `${state.blurAmount}px`;
+      renderPreview();
+    });
+
+    document.getElementById('blurBrightSlider').addEventListener('input', (e) => {
+      state.mode = 'blur';
+      state.blurBrightness = parseInt(e.target.value, 10);
+      document.getElementById('blurBrightLabel').textContent = `${state.blurBrightness}%`;
+      renderPreview();
+    });
+
+    document.getElementById('radiusSlider').addEventListener('input', (e) => {
+      state.cornerRadius = parseFloat(e.target.value);
+      document.getElementById('radiusLabel').textContent = `${state.radiusLabel}px`;
+      renderPreview();
+    });
+
+    document.getElementById('shadowSlider').addEventListener('input', (e) => {
+      state.shadowStrength = parseInt(e.target.value, 10);
+      document.getElementById('shadowLabel').textContent = `${state.shadowStrength}%`;
+      renderPreview();
+    });
+
+    document.querySelectorAll('.sizing-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.sizingRule = btn.dataset.sizing;
+        document.querySelectorAll('.sizing-btn').forEach(b => {
+          const active = b.dataset.sizing === state.sizingRule;
+          b.classList.toggle('border-blue-500', active);
+          b.classList.toggle('bg-blue-950/50', active);
+          b.classList.toggle('text-blue-300', active);
+          b.classList.toggle('border-gray-700', !active);
+          b.classList.toggle('bg-gray-900/50', !active);
+          b.classList.toggle('text-gray-400', !active);
+        });
+        renderPreview();
+      });
+    });
+
+    const exportModal = document.getElementById('exportModal');
+    const exportProgressArea = document.getElementById('exportProgressArea');
+    const exportActionsArea = document.getElementById('exportActionsArea');
+    const exportProgressBar = document.getElementById('exportProgressBar');
+    const exportProgressCount = document.getElementById('exportProgressCount');
+
+    exportBtn.addEventListener('click', () => {
+      if (!state.photos.length) return;
+      document.getElementById('modalPhotoCount').textContent = state.photos.length;
+      exportProgressArea.classList.add('hidden');
+      exportActionsArea.classList.remove('hidden');
+      exportModal.classList.remove('hidden');
+    });
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+      exportModal.classList.add('hidden');
+    });
+
+    async function generateAllBlobs() {
+      exportActionsArea.classList.add('hidden');
+      exportProgressArea.classList.remove('hidden');
+      
+      const workCanvas = document.createElement('canvas');
+      const results = [];
+
+      for (let i = 0; i < state.photos.length; i++) {
+        const photo = state.photos[i];
+        exportProgressCount.textContent = `${i + 1} / ${state.photos.length}`;
+        exportProgressBar.style.width = `${Math.round(((i + 1) / state.photos.length) * 100)}%`;
+
+        await new Promise(r => setTimeout(r, 30));
+
+        renderPhotoWithFrame(workCanvas, photo, null);
+        const blob = await new Promise(resolve => workCanvas.toBlob(resolve, 'image/jpeg', 0.95));
+        const filename = `${photo.name}_framed.jpg`;
+        results.push({ blob, filename });
+      }
+      return results;
+    }
+
+    document.getElementById('shareAllBtn').addEventListener('click', async () => {
+      const items = await generateAllBlobs();
+      const files = items.map(item => new File([item.blob], item.filename, { type: 'image/jpeg' }));
+
+      if (navigator.canShare && navigator.canShare({ files })) {
+        try {
+          await navigator.share({ files, title: 'フチ付き写真' });
+          exportModal.classList.add('hidden');
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            exportModal.classList.add('hidden');
+            return;
+          }
+        }
+      }
+      triggerIndividualDownloads(items);
+      exportModal.classList.add('hidden');
+    });
+
+    document.getElementById('downloadIndividualBtn').addEventListener('click', async () => {
+      const items = await generateAllBlobs();
+      triggerIndividualDownloads(items);
+      exportModal.classList.add('hidden');
+    });
+
+    function triggerIndividualDownloads(items) {
+      items.forEach((item, index) => {
+        setTimeout(() => {
+          const url = URL.createObjectURL(item.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = item.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }, index * 250);
+      });
+    }
+
+    document.getElementById('downloadZipBtn').addEventListener('click', data => {});
+  </script>
+</body>
+</html>
