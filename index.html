@@ -18,13 +18,12 @@
   <style>
     :root {
       --bg-dark: #121212;
-      --bg-panel: #1a1a1a;
+      --bg-panel: #181818;
       --bg-button: #202020;
       --bg-button-active: #323232;
-      --border-color: #353535;
-      --border-bright: #777777;
+      --border-color: #343434;
       --text-main: #f5f5f5;
-      --text-muted: #aaaaaa;
+      --text-muted: #a8a8a8;
       --accent: #ffffff;
       --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', 'Hiragino Kaku Gothic ProN', 'Meiryo', monospace;
     }
@@ -42,7 +41,7 @@
       background-color: var(--bg-dark);
       color: var(--text-main);
       font-family: var(--font-mono);
-      font-weight: 600;
+      font-weight: 700;
       height: 100dvh;
       width: 100vw;
       overflow: hidden;
@@ -133,7 +132,7 @@
       padding: 9px 11px;
     }
 
-    /* Main Workspace: Default Portrait is ALWAYS Top-to-Bottom */
+    /* Main Workspace */
     .workspace {
       flex: 1;
       display: flex;
@@ -172,7 +171,10 @@
       z-index: 25;
     }
 
-    /* Popup Modal Sheet (Appears above controls when any button is tapped) */
+    /* Inspector / Popup Sheet
+     * - Mobile Portrait (<720px): Popup floating sheet
+     * - Wide / Foldable (min-width: 720px): Permanently docked in top-right dead zone!
+     */
     .popup-backdrop {
       position: fixed;
       inset: 0;
@@ -184,12 +186,12 @@
       display: block;
     }
 
-    .popup-sheet {
+    .inspector-sheet {
       position: fixed;
       left: 12px;
       right: 12px;
       bottom: 205px;
-      background: #1b1b1b;
+      background: #181818;
       border: 1px solid #4a4a4a;
       border-radius: 6px;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
@@ -197,15 +199,9 @@
       display: none;
       flex-direction: column;
       overflow: hidden;
-      animation: popUp 0.16s ease-out;
     }
 
-    @keyframes popUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .popup-sheet.open {
+    .inspector-sheet.open {
       display: flex;
     }
 
@@ -213,8 +209,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 11px 14px;
-      background: #141414;
+      padding: 12px 14px;
+      background: #121212;
       border-bottom: 1px solid var(--border-color);
       font-size: 13px;
       font-weight: 700;
@@ -222,11 +218,11 @@
     }
 
     .popup-close {
-      background: transparent;
+      background: #222;
       border: 1px solid #444;
       color: var(--text-main);
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       padding: 4px 10px;
       border-radius: 3px;
@@ -237,12 +233,22 @@
       padding: 16px 14px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       max-height: 45dvh;
       overflow-y: auto;
     }
 
-    /* Option Grid inside Popup */
+    /* Section Divider inside Docked Inspector */
+    .inspector-subhead {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid #292929;
+      padding-bottom: 6px;
+      margin-top: 2px;
+    }
+
+    /* Option Grid */
     .option-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -250,12 +256,12 @@
     }
 
     .option-chip {
-      background: #242424;
+      background: #232323;
       border: 1px solid #3c3c3c;
       color: var(--text-main);
-      padding: 12px 10px;
+      padding: 11px 10px;
       font-family: var(--font-mono);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.05em;
       border-radius: 4px;
@@ -268,7 +274,7 @@
     }
 
     .option-chip.active {
-      background: #333333;
+      background: #343434;
       border: 2px solid #ffffff;
     }
 
@@ -276,14 +282,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       font-size: 12px;
       font-weight: 700;
       color: var(--text-main);
     }
 
     .slider-row label {
-      width: 130px;
+      width: 128px;
       flex-shrink: 0;
       letter-spacing: 0.04em;
     }
@@ -308,6 +314,7 @@
       align-items: center;
       background: #101010;
       border-bottom: 1px solid var(--border-color);
+      border-top: 1px solid var(--border-color);
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -386,10 +393,6 @@
       cursor: pointer;
       border-radius: 2px;
     }
-    .swatch-auto:active {
-      background: #333;
-      border-color: #fff;
-    }
 
     .swatch-item {
       width: 34px;
@@ -460,7 +463,7 @@
       border: 1px solid rgba(255,255,255,0.45);
     }
 
-    /* Preset Modal (Screenshot 1 Faithful Grid) */
+    /* Preset Modal */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -539,8 +542,11 @@
       letter-spacing: 0.03em;
     }
 
-    /* Landscape ONLY 2-Column Layout (Portrait on Z Fold 8 stays Top/Bottom) */
-    @media (orientation: landscape) and (min-width: 760px) {
+    /* ==========================================================
+     * 2-Column Layout (Z Fold 8 Unfolded / Tablet / Desktop)
+     * Fills the top-right dead zone with the Permanent Inspector!
+     * ========================================================== */
+    @media (min-width: 720px) {
       .workspace {
         flex-direction: row;
       }
@@ -549,17 +555,36 @@
         height: 100%;
       }
       .controls-deck {
-        width: 400px;
+        width: 395px;
         height: 100%;
         border-top: none;
         border-left: 1px solid var(--border-color);
-        justify-content: flex-end;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
       }
-      .popup-sheet {
-        left: auto;
-        right: 16px;
-        width: 368px;
-        bottom: 145px;
+      .popup-backdrop {
+        display: none !important;
+      }
+      .inspector-sheet {
+        position: static;
+        display: flex !important;
+        flex: 1;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #141414;
+        min-height: 0;
+      }
+      .popup-close {
+        display: none;
+      }
+      .popup-body {
+        max-height: none;
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 16px;
+        gap: 18px;
       }
       .preset-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -591,7 +616,7 @@
       <button class="btn btn-icon" id="btnSettings" title="設定・PWAアイコン">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
       <button class="btn" id="btnExport">EXPORT</button>
@@ -604,49 +629,52 @@
       <canvas id="mainCanvas"></canvas>
     </section>
 
-    <!-- Backdrop for Popup Sheets -->
+    <!-- Mobile Backdrop -->
     <div class="popup-backdrop" id="popupBackdrop"></div>
 
-    <!-- Dynamic Popup Sheet -->
-    <div class="popup-sheet" id="popupSheet">
-      <div class="popup-header">
-        <span id="popupTitle">ADJUST</span>
-        <button class="popup-close" id="btnClosePopup">CLOSE &times;</button>
-      </div>
-      <div class="popup-body" id="popupBody"></div>
-    </div>
-
     <aside class="controls-deck">
-      <!-- Dynamic Ink Layer Tabs -->
-      <div class="ink-tabs-bar" id="inkTabsBar"></div>
-
-      <!-- Ink Swatches -->
-      <div class="swatch-bar" id="swatchBar">
-        <div class="swatch-auto" id="btnAutoBalance" title="Auto Reset Tone">A</div>
+      <!-- Top-Right Docked Inspector (On Wide Screens) / Popup Sheet (On Narrow Phones) -->
+      <div class="inspector-sheet" id="popupSheet">
+        <div class="popup-header">
+          <span id="popupTitle">GRAIN &amp; TEXTURE</span>
+          <button class="popup-close" id="btnClosePopup">CLOSE &times;</button>
+        </div>
+        <div class="popup-body" id="popupBody"></div>
       </div>
 
-      <!-- 3 Main Action Buttons -->
-      <div class="action-matrix">
-        <button class="btn matrix-btn" id="btnRandom">
-          <span>&#9860;</span> RANDOM
-        </button>
-        <button class="btn matrix-btn" id="btnStyle">
-          <span>&#9861;</span> STYLE
-        </button>
-        <button class="btn matrix-btn" id="btnFrame">
-          <span>&#9859;</span> FRAME
-        </button>
-      </div>
+      <!-- Bottom Fixed Controls Cluster -->
+      <div class="controls-bottom-cluster">
+        <!-- Dynamic Ink Layer Tabs -->
+        <div class="ink-tabs-bar" id="inkTabsBar"></div>
 
-      <!-- Bottom Quick Bar -->
-      <div class="bottom-bar">
-        <div class="bottom-left">
-          <button class="btn" id="btnGrain">&#9618; GRAIN</button>
-          <button class="btn" id="btnPaper">
-            <span class="paper-indicator" id="paperDot"></span> PAPER
+        <!-- Ink Swatches -->
+        <div class="swatch-bar" id="swatchBar">
+          <div class="swatch-auto" id="btnAutoBalance" title="Auto Reset Tone">A</div>
+        </div>
+
+        <!-- 3 Main Action Buttons -->
+        <div class="action-matrix">
+          <button class="btn matrix-btn" id="btnRandom">
+            <span>&#9860;</span> RANDOM
+          </button>
+          <button class="btn matrix-btn" id="btnStyle">
+            <span>&#9861;</span> STYLE
+          </button>
+          <button class="btn matrix-btn" id="btnFrame">
+            <span>&#9859;</span> FRAME
           </button>
         </div>
-        <button class="btn" id="btnTone">&gt; TONE</button>
+
+        <!-- Bottom Quick Bar -->
+        <div class="bottom-bar">
+          <div class="bottom-left">
+            <button class="btn" id="btnGrain">&#9618; GRAIN</button>
+            <button class="btn" id="btnPaper">
+              <span class="paper-indicator" id="paperDot"></span> PAPER
+            </button>
+          </div>
+          <button class="btn" id="btnTone">&gt; TONE</button>
+        </div>
       </div>
     </aside>
   </main>
@@ -662,7 +690,7 @@
 
   <script>
     /**************************************************************
-     * RisoPrint Studio Core Engine (v2 Popup & Bold Edition)
+     * RisoPrint Studio Core Engine (v3 Docked Grain Inspector)
      **************************************************************/
     const INKS = [
       { id: 'black',    name: 'BLACK',   hex: '#141414', r: 20,  g: 20,  b: 20,  hatched: false },
@@ -687,10 +715,10 @@
     ];
 
     const STYLES = [
-      { id: 'ROSETTE',  label: 'ROSETTE (網点ロゼット)' },
-      { id: 'HALFTONE', label: 'HALFTONE (ドット網点)' },
-      { id: 'GRAIN',    label: 'GRAIN (砂目リソグラフ)' },
-      { id: 'HATCH',    label: 'HATCH (クロス万線)' }
+      { id: 'ROSETTE',  label: 'ROSETTE' },
+      { id: 'HALFTONE', label: 'HALFTONE' },
+      { id: 'GRAIN',    label: 'GRAIN' },
+      { id: 'HATCH',    label: 'HATCH' }
     ];
 
     const DEFAULT_PRESETS = [
@@ -716,7 +744,8 @@
       shift: 4,
       margin: 0,
       radius: 18,
-      activePopup: null,
+      activePopup: 'grain', // Default to showing Grain sliders in the top-right inspector
+      mobilePopupOpen: false,
       sourceImage: null,
       presets: [...DEFAULT_PRESETS]
     };
@@ -749,7 +778,6 @@
       setTimeout(() => btn.classList.remove('flash'), 150);
     }
 
-    // Generate default sample image
     function createDefaultImage() {
       const c = document.createElement('canvas');
       c.width = 900;
@@ -871,7 +899,7 @@
       const paper = PAPERS[state.paperIndex];
       paperDot.style.backgroundColor = paper.hex;
 
-      // Active button highlight
+      const isWide = window.innerWidth >= 720;
       const mapBtn = {
         style: 'btnStyle',
         frame: 'btnFrame',
@@ -882,50 +910,71 @@
       };
       Object.entries(mapBtn).forEach(([key, id]) => {
         const el = document.getElementById(id);
-        if (el) el.classList.toggle('active-toggle', state.activePopup === key);
+        if (el) {
+          const isActive = state.activePopup === key && (isWide || state.mobilePopupOpen);
+          el.classList.toggle('active-toggle', isActive);
+        }
       });
     }
 
     /**************************************************************
-     * Popup Sheet Builder (Interactive Popups for Every Button)
+     * Inspector / Popup Builder
      **************************************************************/
-    function closePopup() {
-      state.activePopup = null;
+    function closeMobilePopup() {
+      state.mobilePopupOpen = false;
       popupSheet.classList.remove('open');
       popupBackdrop.classList.remove('open');
       updateUI();
     }
 
-    function openPopup(type) {
-      if (state.activePopup === type) {
-        closePopup();
+    function openInspector(type, fromUserTap = false) {
+      const isWide = window.innerWidth >= 720;
+
+      if (!isWide && fromUserTap && state.activePopup === type && state.mobilePopupOpen) {
+        closeMobilePopup();
         return;
       }
+
       state.activePopup = type;
+      if (!isWide && fromUserTap) {
+        state.mobilePopupOpen = true;
+        popupSheet.classList.add('open');
+        popupBackdrop.classList.add('open');
+      }
+
       popupBody.innerHTML = '';
 
-      if (type === 'style') {
+      if (type === 'grain') {
+        popupTitle.textContent = 'GRAIN & TEXTURE (粒子・網点・繊維感)';
+        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
+        popupBody.appendChild(createSlider('PAPER TEXTURE', 'texture', 0, 100, 1, '%'));
+        popupBody.appendChild(createSlider('INK SHIFT (X/Y)', 'shift', 0, 28, 1, 'px'));
+        popupBody.appendChild(createSlider('CONTRAST', 'contrast', 50, 190, 1, '%'));
+      }
+
+      else if (type === 'style') {
         popupTitle.textContent = 'SCREEN STYLE (網点パターン)';
         const grid = document.createElement('div');
         grid.className = 'option-grid';
         STYLES.forEach((st, idx) => {
           const btn = document.createElement('button');
           btn.className = 'option-chip' + (state.styleIndex === idx ? ' active' : '');
-          btn.textContent = st.id;
+          btn.textContent = st.label;
           btn.addEventListener('click', () => {
             state.styleIndex = idx;
             renderAll();
-            openPopup('style'); // refresh active state
-            showToast(`STYLE: ${st.id}`);
+            openInspector('style');
+            showToast(`STYLE: ${st.label}`);
           });
           grid.appendChild(btn);
         });
         popupBody.appendChild(grid);
-        popupBody.appendChild(createSlider('DOT PITCH (網点サイズ)', 'dotSize', 2, 16, 0.5, 'px'));
+        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
+        popupBody.appendChild(createSlider('INK SHIFT (X/Y)', 'shift', 0, 28, 1, 'px'));
       }
 
       else if (type === 'frame') {
-        popupTitle.textContent = 'FRAME & REGISTRATION (余白と版ズレ)';
+        popupTitle.textContent = 'FRAME & MARGIN (余白・角丸・版ズレ)';
         const grid = document.createElement('div');
         grid.className = 'option-grid';
         [
@@ -940,26 +989,19 @@
           btn.addEventListener('click', () => {
             state.margin = opt.val;
             renderAll();
-            openPopup('frame');
+            openInspector('frame');
             showToast(`FRAME: ${opt.label}`);
           });
           grid.appendChild(btn);
         });
         popupBody.appendChild(grid);
-        popupBody.appendChild(createSlider('MARGIN SIZE (余白幅)', 'margin', 0, 25, 1, '%'));
-        popupBody.appendChild(createSlider('CORNER ROUND (角丸)', 'radius', 0, 60, 2, 'px'));
-        popupBody.appendChild(createSlider('INK SHIFT (版ズレ量)', 'shift', 0, 28, 1, 'px'));
-      }
-
-      else if (type === 'grain') {
-        popupTitle.textContent = 'GRAIN & DOT TEXTURE (粒子と繊維感)';
-        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
-        popupBody.appendChild(createSlider('PAPER TEXTURE (紙の荒さ)', 'texture', 0, 100, 1, '%'));
-        popupBody.appendChild(createSlider('INK SHIFT (版ズレ)', 'shift', 0, 28, 1, 'px'));
+        popupBody.appendChild(createSlider('FRAME MARGIN', 'margin', 0, 25, 1, '%'));
+        popupBody.appendChild(createSlider('CORNER ROUND', 'radius', 0, 60, 2, 'px'));
+        popupBody.appendChild(createSlider('INK SHIFT (X/Y)', 'shift', 0, 28, 1, 'px'));
       }
 
       else if (type === 'paper') {
-        popupTitle.textContent = 'PAPER STOCK (用紙選択)';
+        popupTitle.textContent = 'PAPER STOCK (用紙と繊維)';
         const grid = document.createElement('div');
         grid.className = 'option-grid';
         PAPERS.forEach((p, idx) => {
@@ -969,24 +1011,24 @@
           btn.addEventListener('click', () => {
             state.paperIndex = idx;
             renderAll();
-            openPopup('paper');
+            openInspector('paper');
             showToast(`PAPER: ${p.name}`);
           });
           grid.appendChild(btn);
         });
         popupBody.appendChild(grid);
-        popupBody.appendChild(createSlider('FIBER TEXTURE (繊維の濃さ)', 'texture', 0, 100, 1, '%'));
+        popupBody.appendChild(createSlider('PAPER TEXTURE', 'texture', 0, 100, 1, '%'));
       }
 
       else if (type === 'tone') {
-        popupTitle.textContent = 'TONE & CONTRAST (階調・濃淡調整)';
-        popupBody.appendChild(createSlider('CONTRAST (コントラスト)', 'contrast', 50, 190, 1, '%'));
-        popupBody.appendChild(createSlider('BRIGHTNESS (明るさ)', 'brightness', -50, 50, 1, ''));
-        popupBody.appendChild(createSlider('DOT SIZE (網点サイズ)', 'dotSize', 2, 16, 0.5, 'px'));
+        popupTitle.textContent = 'TONE & CONTRAST (階調・濃淡)';
+        popupBody.appendChild(createSlider('CONTRAST', 'contrast', 50, 190, 1, '%'));
+        popupBody.appendChild(createSlider('BRIGHTNESS', 'brightness', -50, 50, 1, ''));
+        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
       }
 
       else if (type === 'settings') {
-        popupTitle.textContent = 'PWA ICONS & EXPORT SETTINGS';
+        popupTitle.textContent = 'PWA ICONS & SETTINGS';
         const row = document.createElement('div');
         row.style.display = 'flex';
         row.style.gap = '10px';
@@ -995,14 +1037,14 @@
           <button class="btn" id="popDl512" style="flex:1;">ICON 512×512 PNG</button>
         `;
         popupBody.appendChild(row);
+        popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
+        popupBody.appendChild(createSlider('PAPER TEXTURE', 'texture', 0, 100, 1, '%'));
         setTimeout(() => {
           document.getElementById('popDl192')?.addEventListener('click', () => downloadPWAIcon(192));
           document.getElementById('popDl512')?.addEventListener('click', () => downloadPWAIcon(512));
         }, 0);
       }
 
-      popupSheet.classList.add('open');
-      popupBackdrop.classList.add('open');
       updateUI();
     }
 
@@ -1270,6 +1312,7 @@
           state.shift = p.shift ?? 4;
 
           document.getElementById('presetModal').classList.remove('open');
+          openInspector(state.activePopup || 'grain');
           renderAll();
           showToast(`PRESET: ${p.title}`);
         });
@@ -1360,8 +1403,8 @@
       state.contrast = 115;
       state.brightness = 0;
       state.shift = 4;
+      openInspector(state.activePopup || 'grain');
       renderAll();
-      if (state.activePopup) openPopup(state.activePopup);
       showToast('RESET TO AUTO TONE');
     });
 
@@ -1373,25 +1416,27 @@
       state.activeTabIndex = 0;
       state.paperIndex = Math.floor(Math.random() * PAPERS.length);
       state.styleIndex = Math.floor(Math.random() * STYLES.length);
+      openInspector(state.activePopup || 'grain');
       renderAll();
       const names = state.inks.map(id => INKS.find(i => i.id === id).name).join(' + ');
       showToast(`RANDOM: ${names}`);
     });
 
-    // Popup Trigger Buttons
-    document.getElementById('btnStyle').addEventListener('click', () => openPopup('style'));
-    document.getElementById('btnFrame').addEventListener('click', () => openPopup('frame'));
-    document.getElementById('btnGrain').addEventListener('click', () => openPopup('grain'));
-    document.getElementById('btnPaper').addEventListener('click', () => openPopup('paper'));
-    document.getElementById('btnTone').addEventListener('click', () => openPopup('tone'));
-    document.getElementById('btnSettings').addEventListener('click', () => openPopup('settings'));
+    // Inspector / Popup Trigger Buttons
+    document.getElementById('btnStyle').addEventListener('click', () => openInspector('style', true));
+    document.getElementById('btnFrame').addEventListener('click', () => openInspector('frame', true));
+    document.getElementById('btnGrain').addEventListener('click', () => openInspector('grain', true));
+    document.getElementById('btnPaper').addEventListener('click', () => openInspector('paper', true));
+    document.getElementById('btnTone').addEventListener('click', () => openInspector('tone', true));
+    document.getElementById('btnSettings').addEventListener('click', () => openInspector('settings', true));
 
-    document.getElementById('btnClosePopup').addEventListener('click', closePopup);
-    popupBackdrop.addEventListener('click', closePopup);
+    document.getElementById('btnClosePopup').addEventListener('click', closeMobilePopup);
+    popupBackdrop.addEventListener('click', closeMobilePopup);
+    window.addEventListener('resize', () => updateUI());
 
     // Presets Modal
     document.getElementById('btnOpenPresets').addEventListener('click', () => {
-      closePopup();
+      closeMobilePopup();
       document.getElementById('presetModal').classList.add('open');
       renderPresetGrid();
     });
@@ -1446,6 +1491,7 @@
 
     // Init
     initSwatches();
+    openInspector('grain'); // Render Grain sliders into the top-right inspector on startup
     createDefaultImage();
 
     if ('serviceWorker' in navigator) {
