@@ -67,7 +67,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.18s, transform 0.18s;
-      z-index: 200;
+      z-index: 250;
     }
     .toast.show {
       opacity: 1;
@@ -171,10 +171,7 @@
       z-index: 25;
     }
 
-    /* Inspector / Popup Sheet
-     * - Mobile Portrait (<720px): Popup floating sheet
-     * - Wide / Foldable (min-width: 720px): Permanently docked in top-right dead zone!
-     */
+    /* Backdrop for Mobile Popup */
     .popup-backdrop {
       position: fixed;
       inset: 0;
@@ -233,19 +230,9 @@
       padding: 16px 14px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      max-height: 45dvh;
+      gap: 15px;
+      max-height: 48dvh;
       overflow-y: auto;
-    }
-
-    /* Section Divider inside Docked Inspector */
-    .inspector-subhead {
-      font-size: 11px;
-      color: var(--text-muted);
-      letter-spacing: 0.08em;
-      border-bottom: 1px solid #292929;
-      padding-bottom: 6px;
-      margin-top: 2px;
     }
 
     /* Option Grid */
@@ -255,27 +242,75 @@
       gap: 8px;
     }
 
+    .option-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
     .option-chip {
       background: #232323;
       border: 1px solid #3c3c3c;
       color: var(--text-main);
-      padding: 11px 10px;
+      padding: 11px 8px;
       font-family: var(--font-mono);
       font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.12s;
+    }
+
+    .option-chip-row {
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    .option-chip.active {
+      background: #343434;
+      border: 2px solid #ffffff;
+    }
+
+    .chip-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .btn-primary-export {
+      width: 100%;
+      padding: 14px;
+      background: #ffffff;
+      color: #0d0d0d;
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
       border-radius: 4px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: all 0.12s;
+      transition: opacity 0.15s, transform 0.08s;
     }
-
-    .option-chip.active {
-      background: #343434;
-      border: 2px solid #ffffff;
+    .btn-primary-export:hover {
+      opacity: 0.92;
+    }
+    .btn-primary-export:active {
+      transform: scale(0.98);
+    }
+    .btn-primary-export:disabled {
+      background: #555;
+      color: #aaa;
+      cursor: wait;
     }
 
     .slider-row {
@@ -584,7 +619,7 @@
         flex: 1;
         overflow-y: auto;
         padding: 18px 16px;
-        gap: 18px;
+        gap: 16px;
       }
       .preset-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -690,7 +725,7 @@
 
   <script>
     /**************************************************************
-     * RisoPrint Studio Core Engine (v3 Docked Grain Inspector)
+     * RisoPrint Studio Core Engine (v4: 3MP - 24MP Export Edition)
      **************************************************************/
     const INKS = [
       { id: 'black',    name: 'BLACK',   hex: '#141414', r: 20,  g: 20,  b: 20,  hatched: false },
@@ -721,6 +756,8 @@
       { id: 'HATCH',    label: 'HATCH' }
     ];
 
+    const EXPORT_MPS = [3, 6, 10, 12, 20, 24];
+
     const DEFAULT_PRESETS = [
       { title: 'Red + Black',           inks: ['red', 'black'],           paper: 'white', style: 'ROSETTE',  margin: 14, shift: 3 },
       { title: 'Yellow + Blue',         inks: ['yellow', 'blue'],         paper: 'cream', style: 'GRAIN',    margin: 14, shift: 4 },
@@ -744,7 +781,10 @@
       shift: 4,
       margin: 0,
       radius: 18,
-      activePopup: 'grain', // Default to showing Grain sliders in the top-right inspector
+      exportMP: 24,
+      exportFormat: 'jpeg', // 'png' or 'jpeg'
+      isExporting: false,
+      activePopup: 'grain',
       mobilePopupOpen: false,
       sourceImage: null,
       presets: [...DEFAULT_PRESETS]
@@ -766,16 +806,28 @@
     const toastMsg = document.getElementById('toastMsg');
 
     let toastTimer = null;
-    function showToast(text) {
+    function showToast(text, duration = 1200) {
       toastMsg.textContent = text;
       toastMsg.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastMsg.classList.remove('show'), 1100);
+      if (duration > 0) {
+        toastTimer = setTimeout(() => toastMsg.classList.remove('show'), duration);
+      }
     }
 
     function flashButton(btn) {
       btn.classList.add('flash');
       setTimeout(() => btn.classList.remove('flash'), 150);
+    }
+
+    // Calculate target pixel width & height from Megapixels while keeping aspect ratio
+    function getDimensionsForMP(mp) {
+      const img = state.sourceImage;
+      const aspect = img ? (img.width / img.height) : 1; // width / height
+      const totalPixels = mp * 1000000;
+      const w = Math.round(Math.sqrt(totalPixels * aspect));
+      const h = Math.round(totalPixels / w);
+      return { w, h };
     }
 
     function createDefaultImage() {
@@ -906,7 +958,8 @@
         grain: 'btnGrain',
         paper: 'btnPaper',
         tone: 'btnTone',
-        settings: 'btnSettings'
+        settings: 'btnSettings',
+        export: 'btnExport'
       };
       Object.entries(mapBtn).forEach(([key, id]) => {
         const el = document.getElementById(id);
@@ -918,7 +971,7 @@
     }
 
     /**************************************************************
-     * Inspector / Popup Builder
+     * Inspector / Popup Builder (Including 3MP - 24MP Export Selector)
      **************************************************************/
     function closeMobilePopup() {
       state.mobilePopupOpen = false;
@@ -944,7 +997,62 @@
 
       popupBody.innerHTML = '';
 
-      if (type === 'grain') {
+      if (type === 'export') {
+        popupTitle.textContent = 'EXPORT RESOLUTION (出力解像度選択)';
+
+        // 6-way Megapixel Grid: 3MP / 6MP / 10MP / 12MP / 20MP / 24MP
+        const mpGrid = document.createElement('div');
+        mpGrid.className = 'option-grid-3';
+        EXPORT_MPS.forEach((mp) => {
+          const dims = getDimensionsForMP(mp);
+          const chip = document.createElement('button');
+          chip.className = 'option-chip' + (state.exportMP === mp ? ' active' : '');
+          chip.innerHTML = `
+            <span>${mp}MP</span>
+            <span class="chip-sub">${dims.w}&times;${dims.h}</span>
+          `;
+          chip.addEventListener('click', () => {
+            state.exportMP = mp;
+            openInspector('export');
+          });
+          mpGrid.appendChild(chip);
+        });
+        popupBody.appendChild(mpGrid);
+
+        // Format Selector: JPEG (95%) vs PNG (Lossless)
+        const fmtGrid = document.createElement('div');
+        fmtGrid.className = 'option-grid';
+        [
+          { id: 'jpeg', label: 'JPEG (高画質・軽量)' },
+          { id: 'png',  label: 'PNG (無劣化ロスレス)' }
+        ].forEach(fmt => {
+          const chip = document.createElement('button');
+          chip.className = 'option-chip option-chip-row' + (state.exportFormat === fmt.id ? ' active' : '');
+          chip.textContent = fmt.label;
+          chip.addEventListener('click', () => {
+            state.exportFormat = fmt.id;
+            openInspector('export');
+          });
+          fmtGrid.appendChild(chip);
+        });
+        popupBody.appendChild(fmtGrid);
+
+        // Download Trigger Button
+        const targetDims = getDimensionsForMP(state.exportMP);
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'btn-primary-export';
+        dlBtn.disabled = state.isExporting;
+        dlBtn.textContent = state.isExporting
+          ? 'RENDERING HIGH-RES...'
+          : `DOWNLOAD ${state.exportMP}MP (${targetDims.w}×${targetDims.h})`;
+
+        dlBtn.addEventListener('click', () => {
+          runHighResExport(state.exportMP, state.exportFormat, dlBtn);
+        });
+        popupBody.appendChild(dlBtn);
+      }
+
+      else if (type === 'grain') {
         popupTitle.textContent = 'GRAIN & TEXTURE (粒子・網点・繊維感)';
         popupBody.appendChild(createSlider('DOT / GRAIN SIZE', 'dotSize', 2, 16, 0.5, 'px'));
         popupBody.appendChild(createSlider('PAPER TEXTURE', 'texture', 0, 100, 1, '%'));
@@ -958,7 +1066,7 @@
         grid.className = 'option-grid';
         STYLES.forEach((st, idx) => {
           const btn = document.createElement('button');
-          btn.className = 'option-chip' + (state.styleIndex === idx ? ' active' : '');
+          btn.className = 'option-chip option-chip-row' + (state.styleIndex === idx ? ' active' : '');
           btn.textContent = st.label;
           btn.addEventListener('click', () => {
             state.styleIndex = idx;
@@ -984,7 +1092,7 @@
           { label: 'WIDE (20%)', val: 20 }
         ].forEach(opt => {
           const btn = document.createElement('button');
-          btn.className = 'option-chip' + (state.margin === opt.val ? ' active' : '');
+          btn.className = 'option-chip option-chip-row' + (state.margin === opt.val ? ' active' : '');
           btn.textContent = opt.label;
           btn.addEventListener('click', () => {
             state.margin = opt.val;
@@ -1006,7 +1114,7 @@
         grid.className = 'option-grid';
         PAPERS.forEach((p, idx) => {
           const btn = document.createElement('button');
-          btn.className = 'option-chip' + (state.paperIndex === idx ? ' active' : '');
+          btn.className = 'option-chip option-chip-row' + (state.paperIndex === idx ? ' active' : '');
           btn.innerHTML = `<span class="paper-indicator" style="background:${p.hex}"></span><span>${p.name}</span>`;
           btn.addEventListener('click', () => {
             state.paperIndex = idx;
@@ -1078,9 +1186,9 @@
     }
 
     /**
-     * Core Riso / Halftone Renderer
+     * Synchronous Preview Renderer (Fast for interactive preview & thumbnails)
      */
-    function renderRisoToCanvas(targetCanvas, config, workWidth = 880) {
+    function renderRisoToCanvas(targetCanvas, config, workWidth = 840) {
       if (!state.sourceImage) return;
 
       const img = state.sourceImage;
@@ -1094,12 +1202,13 @@
 
       const paper = PAPERS.find(p => p.id === config.paperId) || PAPERS[0];
       const styleMode = config.styleMode || 'ROSETTE';
-      const dotSize = config.dotSize || 5.5;
+      const scaleFactor = w / 840;
+      const dotSize = (config.dotSize || 5.5) * scaleFactor;
       const contrast = (config.contrast || 115) / 100;
       const brightOffset = (config.brightness || 0) / 100;
       const textureAmt = (config.texture ?? 48) / 100;
       const marginRatio = (config.margin || 0) / 100;
-      const shiftPx = (config.shift ?? 4) * (workWidth / 880);
+      const shiftPx = (config.shift ?? 4) * scaleFactor;
 
       tCtx.fillStyle = paper.hex;
       tCtx.fillRect(0, 0, w, h);
@@ -1121,9 +1230,19 @@
 
       const inkObjs = config.inks.map(id => INKS.find(i => i.id === id) || INKS[0]);
       const angles = [0.26, 1.30, 0.78];
+      const freq = (Math.PI * 2) / Math.max(2, dotSize);
+      const cornerRadius = marginRatio > 0 ? Math.round((config.radius ?? 18) * scaleFactor) : 0;
 
-      const freq = (Math.PI * 2) / Math.max(2, dotSize * (workWidth / 880));
-      const cornerRadius = marginRatio > 0 ? Math.round((config.radius ?? 18) * (workWidth / 880)) : 0;
+      processRisoRows(0, h, w, h, padX, padY, innerW, innerH, cornerRadius, scaleFactor, freq, styleMode, contrast, brightOffset, textureAmt, shiftPx, paper, inkObjs, angles, srcData, out);
+
+      tCtx.putImageData(outImgData, 0, 0);
+    }
+
+    /**
+     * Shared Row Processor (Used by both Preview and Chunked 24MP Exporter)
+     */
+    function processRisoRows(startY, endY, w, h, padX, padY, innerW, innerH, cornerRadius, scaleFactor, freq, styleMode, contrast, brightOffset, textureAmt, shiftPx, paper, inkObjs, angles, srcData, out) {
+      const invScale = 1 / scaleFactor;
 
       function insideRoundedRect(x, y, rw, rh, rad) {
         if (x < 0 || y < 0 || x >= rw || y >= rh) return false;
@@ -1140,12 +1259,14 @@
         return n - Math.floor(n);
       }
 
-      for (let y = 0; y < h; y++) {
+      for (let y = startY; y < endY; y++) {
+        const refY = Math.floor(y * invScale);
         for (let x = 0; x < w; x++) {
           const outIdx = (y * w + x) * 4;
+          const refX = Math.floor(x * invScale);
 
-          const weave = (Math.sin(x * 1.4) + Math.cos(y * 1.4)) * 0.5;
-          const fineGrain = (hashNoise(x, y) - 0.5) * 2;
+          const weave = (Math.sin(x * 1.4 * invScale) + Math.cos(y * 1.4 * invScale)) * 0.5;
+          const fineGrain = (hashNoise(refX, refY) - 0.5) * 2;
           const fiberDelta = (weave * 7 + fineGrain * 18) * textureAmt;
 
           let pr = paper.r + fiberDelta;
@@ -1207,7 +1328,7 @@
             } else if (styleMode === 'HALFTONE') {
               threshold = (Math.sin(rx * freq) * Math.sin(ry * freq)) * 0.45 + 0.5;
             } else if (styleMode === 'GRAIN') {
-              threshold = hashNoise(x + k * 71, y + k * 43) * 0.88 + 0.06;
+              threshold = hashNoise(refX + k * 71, refY + k * 43) * 0.88 + 0.06;
             } else if (styleMode === 'HATCH') {
               threshold = (Math.sin(rx * freq * 1.25) * 0.45 + 0.5) * 0.85 + fineGrain * 0.08;
             }
@@ -1236,8 +1357,99 @@
           out[outIdx + 3] = 255;
         }
       }
+    }
 
-      tCtx.putImageData(outImgData, 0, 0);
+    /**
+     * Non-blocking Chunked High-Res Exporter (Up to 24MP / 6000x4000px+)
+     */
+    function runHighResExport(mp, format, btnEl) {
+      if (!state.sourceImage || state.isExporting) return;
+      state.isExporting = true;
+      if (btnEl) btnEl.disabled = true;
+
+      const { w, h } = getDimensionsForMP(mp);
+      const config = getCurrentConfig();
+
+      showToast(`RENDERING ${mp}MP (${w}×${h})... 0%`, 0);
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = w;
+      exportCanvas.height = h;
+      const tCtx = exportCanvas.getContext('2d');
+
+      const paper = PAPERS.find(p => p.id === config.paperId) || PAPERS[0];
+      const styleMode = config.styleMode || 'ROSETTE';
+      const scaleFactor = w / 840;
+      const dotSize = (config.dotSize || 5.5) * scaleFactor;
+      const contrast = (config.contrast || 115) / 100;
+      const brightOffset = (config.brightness || 0) / 100;
+      const textureAmt = (config.texture ?? 48) / 100;
+      const marginRatio = (config.margin || 0) / 100;
+      const shiftPx = (config.shift ?? 4) * scaleFactor;
+
+      tCtx.fillStyle = paper.hex;
+      tCtx.fillRect(0, 0, w, h);
+
+      const padX = Math.round(w * marginRatio);
+      const padY = Math.round(h * marginRatio);
+      const innerW = Math.max(10, w - padX * 2);
+      const innerH = Math.max(10, h - padY * 2);
+
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = innerW;
+      srcCanvas.height = innerH;
+      const srcCtx = srcCanvas.getContext('2d');
+      srcCtx.drawImage(state.sourceImage, 0, 0, innerW, innerH);
+      const srcData = srcCtx.getImageData(0, 0, innerW, innerH).data;
+
+      const outImgData = tCtx.getImageData(0, 0, w, h);
+      const out = outImgData.data;
+
+      const inkObjs = config.inks.map(id => INKS.find(i => i.id === id) || INKS[0]);
+      const angles = [0.26, 1.30, 0.78];
+      const freq = (Math.PI * 2) / Math.max(2, dotSize);
+      const cornerRadius = marginRatio > 0 ? Math.round((config.radius ?? 18) * scaleFactor) : 0;
+
+      let currentY = 0;
+      const chunkRows = Math.max(40, Math.floor(450000 / w));
+
+      function nextChunk() {
+        const endY = Math.min(h, currentY + chunkRows);
+        processRisoRows(
+          currentY, endY, w, h, padX, padY, innerW, innerH, cornerRadius,
+          scaleFactor, freq, styleMode, contrast, brightOffset, textureAmt,
+          shiftPx, paper, inkObjs, angles, srcData, out
+        );
+        currentY = endY;
+
+        const pct = Math.round((currentY / h) * 100);
+        showToast(`RENDERING ${mp}MP... ${pct}%`, 0);
+        if (btnEl) btnEl.textContent = `RENDERING ${mp}MP... ${pct}%`;
+
+        if (currentY < h) {
+          requestAnimationFrame(nextChunk);
+        } else {
+          tCtx.putImageData(outImgData, 0, 0);
+          const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+          const ext = format === 'png' ? 'png' : 'jpg';
+          const quality = format === 'png' ? undefined : 0.95;
+
+          exportCanvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `risoprint-${mp}MP-${w}x${h}-${Date.now()}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            state.isExporting = false;
+            showToast(`EXPORTED ${mp}MP (${w}×${h})`, 1800);
+            if (state.activePopup === 'export') openInspector('export');
+          }, mime, quality);
+        }
+      }
+
+      requestAnimationFrame(nextChunk);
     }
 
     function getCurrentConfig() {
@@ -1382,6 +1594,7 @@
         const img = new Image();
         img.onload = () => {
           state.sourceImage = img;
+          if (state.activePopup === 'export') openInspector('export');
           renderMainCanvas();
           showToast('IMAGE LOADED');
         };
@@ -1429,6 +1642,7 @@
     document.getElementById('btnPaper').addEventListener('click', () => openInspector('paper', true));
     document.getElementById('btnTone').addEventListener('click', () => openInspector('tone', true));
     document.getElementById('btnSettings').addEventListener('click', () => openInspector('settings', true));
+    document.getElementById('btnExport').addEventListener('click', () => openInspector('export', true));
 
     document.getElementById('btnClosePopup').addEventListener('click', closeMobilePopup);
     popupBackdrop.addEventListener('click', closeMobilePopup);
@@ -1471,27 +1685,9 @@
       showToast('PRESET SAVED');
     });
 
-    // High-Res Export
-    document.getElementById('btnExport').addEventListener('click', (e) => {
-      flashButton(e.currentTarget);
-      showToast('EXPORTING HIGH-RES PNG...');
-      setTimeout(() => {
-        const exportCanvas = document.createElement('canvas');
-        renderRisoToCanvas(exportCanvas, getCurrentConfig(), 2000);
-        exportCanvas.toBlob((blob) => {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `risoprint-${Date.now()}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }, 'image/png');
-      }, 50);
-    });
-
     // Init
     initSwatches();
-    openInspector('grain'); // Render Grain sliders into the top-right inspector on startup
+    openInspector('grain');
     createDefaultImage();
 
     if ('serviceWorker' in navigator) {
