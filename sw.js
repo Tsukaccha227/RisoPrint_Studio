@@ -2,10 +2,11 @@ const CACHE_NAME = 'risoprint-studio-v1';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
-// インストール時に基本ファイルをキャッシュ
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
@@ -13,7 +14,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 古いキャッシュの削除
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -25,7 +25,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ネットワーク優先、オフライン時はキャッシュを返す
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
